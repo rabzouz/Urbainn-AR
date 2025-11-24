@@ -10,18 +10,21 @@
 
     <style>
       body, html { margin: 0; overflow: hidden; }
+
       #playWithSound {
         position: fixed;
         z-index: 10;
-        bottom: 20px;
-        left: 20px;
-        padding: 10px 16px;
+        bottom: 60px;
+        left: 12px;
+        padding: 8px 12px;
         background: rgba(0, 0, 0, 0.7);
         color: white;
         border: none;
         border-radius: 4px;
         font-size: 14px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
+
       #info {
         position: fixed;
         z-index: 10;
@@ -34,13 +37,67 @@
         max-width: 80%;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
-      div.a-enter-vr, div.a-enter-ar { display: none !important; }
+
+      /* Barre “fenêtre vidéo” en bas */
+      #video-ui {
+        position: fixed;
+        z-index: 11;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 10px 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.75);
+        color: #fff;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 13px;
+      }
+
+      #video-title {
+        font-weight: 600;
+      }
+
+      #video-stats {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #likeBtn {
+        background: transparent;
+        border: none;
+        color: #ff5a7a;
+        font-size: 20px;
+        line-height: 1;
+        padding: 0 4px;
+        cursor: pointer;
+      }
+
+      div.a-enter-vr,
+      div.a-enter-ar {
+        display: none !important;
+      }
     </style>
   </head>
   <body>
     <div id="info">
       Chargement de la vidéo...
     </div>
+
+    <!-- Fenêtre vidéo / stats -->
+    <div id="video-ui">
+      <div>
+        <div id="video-title">UrbainAR</div>
+        <div id="video-views">0 vues</div>
+      </div>
+      <div id="video-stats">
+        <button id="likeBtn">♡</button>
+        <span id="video-likes">0</span>
+      </div>
+    </div>
+
     <button id="playWithSound">Activer le son</button>
 
     <a-scene
@@ -77,26 +134,37 @@
     </a-scene>
 
     <script>
-      const vid   = document.getElementById("video-texture");
-      const btn   = document.getElementById("playWithSound");
-      const plane = document.getElementById("video-plane");
-      const info  = document.getElementById("info");
+      const vid        = document.getElementById("video-texture");
+      const btn        = document.getElementById("playWithSound");
+      const plane      = document.getElementById("video-plane");
+      const info       = document.getElementById("info");
+      const viewsEl    = document.getElementById("video-views");
+      const likesEl    = document.getElementById("video-likes");
+      const likeBtn    = document.getElementById("likeBtn");
+      const titleEl    = document.getElementById("video-title");
 
-      // 1) Lire ?video=... dans l'URL (envoyé par l'app Android)
+      // 1) Lire ?video=... et éventuellement ?title=... dans l'URL
       let videoUrl = null;
+      let videoId  = null; // futur id Firestore
       try {
         const params = new URLSearchParams(window.location.search);
         const videoParam = params.get("video");
+        const titleParam = params.get("title");
+        videoId = params.get("id") || null;
+
         if (videoParam) {
           videoUrl = decodeURIComponent(videoParam);
           vid.src = videoUrl;
           info.textContent = "Vidéo chargée. Autorise la caméra, puis appuie sur Activer le son.";
+          if (titleParam) {
+            titleEl.textContent = decodeURIComponent(titleParam);
+          }
         } else {
           info.textContent = "Paramètre ?video= manquant dans l'URL.";
         }
       } catch (e) {
-        console.log("Erreur lecture paramètre video:", e);
-        info.textContent = "Erreur de lecture du paramètre vidéo.";
+        console.log("Erreur lecture paramètres URL:", e);
+        info.textContent = "Erreur de lecture des paramètres d'URL.";
       }
 
       // 2) Ajuster le ratio du panneau dès que les métadonnées sont connues
@@ -105,8 +173,8 @@
         const vh = vid.videoHeight;
         if (!vw || !vh || !plane) return;
 
-        const baseWidth = 1.5;
-        const aspect    = vh / vw;
+        const baseWidth   = 1.5;
+        const aspect      = vh / vw;
         const finalWidth  = baseWidth;
         const finalHeight = baseWidth * aspect;
 
@@ -124,6 +192,10 @@
             mesh.material.map.needsUpdate = true;
           }
         }).catch(err => console.log("autoplay error:", err));
+
+        // Ici, plus tard : appel backend pour incrementer les vues + charger views/likes initiaux
+        // Exemple d'initialisation front-only pour la démo :
+        viewsEl.textContent = "1 vue";
       });
 
       // 4) Bouton pour activer le son
@@ -132,6 +204,25 @@
         vid.muted = false;
         vid.play().catch(err => console.log("play error:", err));
         btn.style.display = "none";
+      });
+
+      // 5) Bouton j'aime (coeur) – version front (sans Firestore pour l'instant)
+      let localLikes = 0;
+      let liked = false;
+
+      likeBtn.addEventListener("click", () => {
+        liked = !liked;
+        if (liked) {
+          localLikes += 1;
+          likeBtn.textContent = "❤";
+        } else {
+          localLikes = Math.max(0, localLikes - 1);
+          likeBtn.textContent = "♡";
+        }
+        likesEl.textContent = localLikes.toString();
+
+        // Ici, plus tard : appel backend / Firestore pour sauver le like
+        // ex: fetch("https://TON_BACKEND/likeVideo", { method:"POST", body: JSON.stringify({videoId}) })
       });
     </script>
   </body>
