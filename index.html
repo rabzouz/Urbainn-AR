@@ -2,12 +2,11 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <title>Test vidéo UrbainAR</title>
+    <title>UrbainAR WebAR (toutes vidéos)</title>
 
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
-    <!-- Gestes (pinch pour zoom) -->
-    <script src="https://cdn.jsdelivr.net/gh/fcor/arjs-gestures@master/dist/gestures.js"></script> <!-- [web:214] -->
+    <script src="https://cdn.jsdelivr.net/gh/fcor/arjs-gestures@master/dist/gestures.js"></script>
 
     <style>
       body, html { margin: 0; overflow: hidden; }
@@ -23,10 +22,25 @@
         border-radius: 4px;
         font-size: 14px;
       }
+      #info {
+        position: fixed;
+        z-index: 10;
+        top: 10px;
+        left: 10px;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        font-size: 12px;
+        max-width: 80%;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
       div.a-enter-vr, div.a-enter-ar { display: none !important; }
     </style>
   </head>
   <body>
+    <div id="info">
+      Chargement de la vidéo...
+    </div>
     <button id="playWithSound">Activer le son</button>
 
     <a-scene
@@ -36,10 +50,10 @@
       arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
     >
       <a-assets>
-        <!-- URL Supabase COMPLETE (public) -->
+        <!-- La SRC sera mise à jour depuis ?video=... -->
         <video
           id="video-texture"
-          src="https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-videos/video_e1cbef24-ab42-4fbe-9ada-3a7b63ed5a23.mp4"
+          src=""
           loop="true"
           muted
           playsinline
@@ -50,7 +64,7 @@
 
       <a-camera></a-camera>
 
-      <!-- Panneau vidéo plus loin + gestes pour zoom (pinch) -->
+      <!-- Panneau vidéo devant la caméra, avec zoom au pinch -->
       <a-video
         id="video-plane"
         src="#video-texture"
@@ -66,15 +80,33 @@
       const vid   = document.getElementById("video-texture");
       const btn   = document.getElementById("playWithSound");
       const plane = document.getElementById("video-plane");
+      const info  = document.getElementById("info");
 
-      // Ajuster le ratio du panneau dès que les métadonnées vidéo sont connues
+      // 1) Lire ?video=... dans l'URL (envoyé par l'app Android)
+      let videoUrl = null;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const videoParam = params.get("video");
+        if (videoParam) {
+          videoUrl = decodeURIComponent(videoParam);
+          vid.src = videoUrl;
+          info.textContent = "Vidéo chargée. Autorise la caméra, puis appuie sur Activer le son.";
+        } else {
+          info.textContent = "Paramètre ?video= manquant dans l'URL.";
+        }
+      } catch (e) {
+        console.log("Erreur lecture paramètre video:", e);
+        info.textContent = "Erreur de lecture du paramètre vidéo.";
+      }
+
+      // 2) Ajuster le ratio du panneau dès que les métadonnées sont connues
       vid.addEventListener("loadedmetadata", () => {
         const vw = vid.videoWidth;
         const vh = vid.videoHeight;
         if (!vw || !vh || !plane) return;
 
-        const baseWidth = 1.5;        // largeur en mètres du panneau
-        const aspect    = vh / vw;    // hauteur / largeur (ratio réel de la vidéo)
+        const baseWidth = 1.5;
+        const aspect    = vh / vw;
         const finalWidth  = baseWidth;
         const finalHeight = baseWidth * aspect;
 
@@ -82,8 +114,9 @@
         plane.setAttribute("height", finalHeight);
       });
 
-      // Démarrage muet quand la scène est prête
+      // 3) Démarrage muet quand la scène est prête
       document.querySelector("a-scene").addEventListener("loaded", () => {
+        if (!videoUrl) return;
         vid.muted = true;
         vid.play().then(() => {
           const mesh = plane.getObject3D("mesh");
@@ -93,8 +126,9 @@
         }).catch(err => console.log("autoplay error:", err));
       });
 
-      // Bouton pour activer le son
+      // 4) Bouton pour activer le son
       btn.addEventListener("click", () => {
+        if (!videoUrl) return;
         vid.muted = false;
         vid.play().catch(err => console.log("play error:", err));
         btn.style.display = "none";
