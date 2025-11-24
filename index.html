@@ -35,7 +35,7 @@
       renderer="logarithmicDepthBuffer: true"
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
     >
-      <!-- Vidéo HTML5 : valeur par défaut, remplacée en JS si ?video=... -->
+      <!-- Vidéo HTML5 -->
       <video
         id="video-texture"
         src="https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-videos/video_0061bed7-6c43-43fe-814b-4c9288a7c65e.mp4"
@@ -45,12 +45,13 @@
         playsinline
       ></video>
 
-      <!-- Marker Hiro intégré -->
+      <!-- Marker Hiro -->
       <a-marker preset="hiro">
         <a-video
+          id="video-plane"
           src="#video-texture"
-          width="2"
-          height="1.125"
+          width="1.0"
+          height="1.0"
           position="0 0 0"
           rotation="-90 0 0"
         ></a-video>
@@ -64,24 +65,40 @@
     <script>
       const vid = document.getElementById("video-texture");
       const btn = document.getElementById("playWithSound");
+      const plane = document.getElementById("video-plane");
 
-      // 1) Lire le paramètre ?video=... dans l'URL
+      // 1) Lire ?video=... dans l'URL
       try {
         const params = new URLSearchParams(window.location.search);
         const videoParam = params.get("video");
         if (videoParam) {
-          // on suppose que l'URL reçue est déjà encodée
           vid.src = decodeURIComponent(videoParam);
         }
       } catch (e) {
         console.log("Erreur lecture paramètre video:", e);
       }
 
-      // 2) Démarrage auto en muet (autoplay mobile)
+      // 2) Quand les métadonnées sont chargées, ajuster le ratio du plan
+      vid.addEventListener("loadedmetadata", () => {
+        const vw = vid.videoWidth;
+        const vh = vid.videoHeight;
+        if (!vw || !vh || !plane) return;
+
+        // largeur de base en mètres (taille du panneau)
+        const baseWidth = 1.5;
+        const aspect = vh / vw; // hauteur / largeur pour respecter le ratio
+        const finalWidth = baseWidth;
+        const finalHeight = baseWidth * aspect;
+
+        plane.setAttribute("width", finalWidth);
+        plane.setAttribute("height", finalHeight);
+      });
+
+      // 3) Démarrage auto en muet
       vid.muted = true;
       vid.play().catch(() => {});
 
-      // 3) Au clic, activer le son
+      // 4) Au clic, activer le son
       btn.addEventListener("click", () => {
         vid.muted = false;
         vid.play().catch(err => console.log("Erreur lecture:", err));
