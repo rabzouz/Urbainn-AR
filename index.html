@@ -2,68 +2,91 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <title>UrbainAR WebAR Vidéo</title>
+    <title>UrbainAR WebAR Supabase</title>
+
     <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <!-- AR.js pour A-Frame (marker-based simple pour démarrer) -->
+    <!-- AR.js pour A-Frame -->
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+
     <style>
       body, html {
         margin: 0;
         overflow: hidden;
       }
+      #playWithSound {
+        position: fixed;
+        z-index: 10;
+        bottom: 20px;
+        left: 20px;
+        padding: 10px 16px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+      }
     </style>
   </head>
   <body>
-    <!--
-      Scène A-Frame + AR.js
-      embedded + arjs : lance la caméra et superpose la 3D
-    -->
     <a-scene
       embedded
-      vr-mode-ui="enabled: false"
+      xr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true"
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
     >
-      <!-- Vidéo HTML5 comme source -->
+      <!-- Vidéo HTML5 : valeur par défaut, remplacée en JS si ?video=... -->
       <video
         id="video-texture"
-        src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+        src="https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-videos/video_0061bed7-6c43-43fe-814b-4c9288a7c65e.mp4"
         loop="true"
         crossorigin="anonymous"
         webkit-playsinline
         playsinline
-        muted
       ></video>
 
-      <!--
-        Marqueur AR : on utilise le pattern Hiro par défaut pour démarrer
-        Quand la caméra voit ce marqueur, le plan vidéo apparaît dessus
-      -->
-      <a-marker type="pattern" url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/data/patt.hiro">
-        <!-- Plan avec la vidéo comme texture -->
+      <!-- Marker Hiro intégré -->
+      <a-marker preset="hiro">
         <a-video
           src="#video-texture"
           width="2"
-          height="1.125"  <!-- format ~16:9 -->
+          height="1.125"
           position="0 0 0"
           rotation="-90 0 0"
         ></a-video>
       </a-marker>
 
-      <!-- Caméra AR.js -->
       <a-entity camera></a-entity>
     </a-scene>
 
+    <button id="playWithSound">Activer le son</button>
+
     <script>
-      // Démarrage auto de la vidéo quand la page se charge
       const vid = document.getElementById("video-texture");
-      document.addEventListener("click", () => {
-        // Sur mobile, il faut souvent une interaction utilisateur pour lancer le son
-        vid.play().catch((e) => console.log("play error", e));
-      });
-      // Tentative auto (certains navigateurs la bloquent si pas muted)
+      const btn = document.getElementById("playWithSound");
+
+      // 1) Lire le paramètre ?video=... dans l'URL
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const videoParam = params.get("video");
+        if (videoParam) {
+          // on suppose que l'URL reçue est déjà encodée
+          vid.src = decodeURIComponent(videoParam);
+        }
+      } catch (e) {
+        console.log("Erreur lecture paramètre video:", e);
+      }
+
+      // 2) Démarrage auto en muet (autoplay mobile)
+      vid.muted = true;
       vid.play().catch(() => {});
+
+      // 3) Au clic, activer le son
+      btn.addEventListener("click", () => {
+        vid.muted = false;
+        vid.play().catch(err => console.log("Erreur lecture:", err));
+        btn.style.display = "none";
+      });
     </script>
   </body>
 </html>
