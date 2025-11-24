@@ -34,7 +34,7 @@
       arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
     >
       <a-assets>
-        <!-- Mets ici ton URL Supabase COMPLETE (public) -->
+        <!-- URL Supabase COMPLETE (public) -->
         <video
           id="video-texture"
           src="https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-videos/video_e1cbef24-ab42-4fbe-9ada-3a7b63ed5a23.mp4"
@@ -63,6 +63,21 @@
       const vid   = document.getElementById("video-texture");
       const btn   = document.getElementById("playWithSound");
       const plane = document.getElementById("video-plane");
+
+      // Ajuster le ratio du panneau dès que les métadonnées vidéo sont connues
+      vid.addEventListener("loadedmetadata", () => {
+        const vw = vid.videoWidth;
+        const vh = vid.videoHeight;
+        if (!vw || !vh || !plane) return;
+
+        const baseWidth = 1.5;        // largeur en mètres du panneau
+        const aspect    = vh / vw;    // hauteur / largeur (ratio réel de la vidéo)
+        const finalWidth  = baseWidth;
+        const finalHeight = baseWidth * aspect;
+
+        plane.setAttribute("width", finalWidth);
+        plane.setAttribute("height", finalHeight);
+      });
 
       // Démarrage muet quand la scène est prête
       document.querySelector("a-scene").addEventListener("loaded", () => {
