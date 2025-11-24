@@ -69,15 +69,16 @@
         look-controls="enabled: false"
       ></a-camera>
 
-      <!-- Panneau vidéo géolocalisé -->
+      <!-- Panneau vidéo géolocalisé (taille réduite) -->
       <a-video
         id="video-plane"
         src="#video-texture"
         gps-new-entity-place="latitude: 0; longitude: 0"
         position="0 3 0"
         rotation="-90 0 0"
-        width="1.5"
-        height="1.0"
+        width="0.8"
+        height="0.8"
+        scale="0.3 0.3 0.3"
       ></a-video>
     </a-scene>
 
@@ -111,13 +112,13 @@
         info.textContent = "Erreur de lecture des paramètres d'URL.";
       }
 
-      // 2) Quand les métadonnées sont chargées, ajuster le ratio du plan
+      // 2) Quand les métadonnées sont chargées, ajuster le ratio du plan (en gardant une base petite)
       vid.addEventListener("loadedmetadata", () => {
         const vw = vid.videoWidth;
         const vh = vid.videoHeight;
         if (!vw || !vh || !plane) return;
 
-        const baseWidth = 1.5;
+        const baseWidth = 0.8; // plus petit qu'avant
         const aspect = vh / vw;
         const finalWidth = baseWidth;
         const finalHeight = baseWidth * aspect;
@@ -145,7 +146,7 @@
             `latitude: ${lat}; longitude: ${lng}`
           );
           info.textContent =
-            "Déplace-toi vers le lieu et oriente ton téléphone pour voir la vidéo.";
+            "Mets-toi à quelques mètres du lieu et oriente ton téléphone pour voir la vidéo.";
         }
       });
 
