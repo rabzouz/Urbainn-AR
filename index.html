@@ -4,16 +4,11 @@
     <meta charset="utf-8" />
     <title>UrbainAR WebAR Supabase (géolocalisé)</title>
 
-    <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <!-- AR.js A-Frame build avec location-based -->
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      body, html {
-        margin: 0;
-        overflow: hidden;
-      }
+      body, html { margin: 0; overflow: hidden; }
       #playWithSound {
         position: fixed;
         z-index: 10;
@@ -38,11 +33,7 @@
         max-width: 80%;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
-      /* Masquer toute UI VR / AR */
-      div.a-enter-vr,
-      div.a-enter-ar {
-        display: none !important;
-      }
+      div.a-enter-vr, div.a-enter-ar { display: none !important; }
     </style>
   </head>
   <body>
@@ -50,19 +41,7 @@
       Autorise caméra, géolocalisation et orientation pour voir la vidéo au bon endroit.
     </div>
 
-    <!-- Vidéo HTML5 (texture uniquement) -->
-    <video
-      id="video-texture"
-      src=""
-      loop="true"
-      muted
-      playsinline
-      webkit-playsinline
-      x-webkit-airplay="allow"
-      controls="false"
-      style="width:1px;height:1px;opacity:0;position:absolute;left:-9999px;top:-9999px;"
-      crossorigin="anonymous"
-    ></video>
+    <button id="playWithSound">Activer le son</button>
 
     <a-scene
       embedded
@@ -70,6 +49,19 @@
       renderer="logarithmicDepthBuffer: true"
       arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
     >
+      <!-- Assets A-Frame -->
+      <a-assets>
+        <video
+          id="video-texture"
+          src=""
+          loop="true"
+          muted
+          playsinline
+          webkit-playsinline
+          crossorigin="anonymous"
+        ></video>
+      </a-assets>
+
       <!-- Caméra géolocalisée -->
       <a-camera
         id="urbainar-camera"
@@ -91,18 +83,16 @@
       ></a-video>
     </a-scene>
 
-    <button id="playWithSound">Activer le son</button>
-
     <script>
       const vid   = document.getElementById("video-texture");
       const btn   = document.getElementById("playWithSound");
       const plane = document.getElementById("video-plane");
       const info  = document.getElementById("info");
 
-      // 1) Lire ?video=...&lat=...&lng=... dans l'URL
       let lat = null;
       let lng = null;
 
+      // 1) Lire ?video=...&lat=...&lng=... dans l'URL
       try {
         const params = new URLSearchParams(window.location.search);
         const videoParam = params.get("video");
@@ -121,7 +111,7 @@
         info.textContent = "Erreur de lecture des paramètres d'URL.";
       }
 
-      // 2) Ajuster le ratio du panneau quand la vidéo est prête
+      // 2) Ajuster le ratio du panneau
       vid.addEventListener("loadedmetadata", () => {
         const vw = vid.videoWidth;
         const vh = vid.videoHeight;
@@ -136,27 +126,32 @@
         plane.setAttribute("height", finalHeight);
       });
 
-      // 3) Démarrage auto en muet + synchro texture
-      vid.muted = true;
-      vid.play().then(() => {
-        if (plane && plane.components && plane.components.material) {
-          const tex = plane.components.material.material.map;
-          if (tex && tex.image === vid) {
-            tex.needsUpdate = true;
+      // 3) Lancer la vidéo en muet + forcer la texture
+      function startVideoMuted() {
+        vid.muted = true;
+        vid.play().then(() => {
+          // A-Frame met à jour la texture automatiquement,
+          // mais on force une update au cas où
+          const mat = plane.getObject3D('mesh');
+          if (mat && mat.material && mat.material.map) {
+            mat.material.map.needsUpdate = true;
           }
-        }
-      }).catch(err => {
-        console.log("Erreur autoplay vidéo:", err);
-      });
+        }).catch(err => {
+          console.log("Erreur autoplay vidéo:", err);
+        });
+      }
 
-      // 4) Au clic, activer le son
+      // Démarrer après que la scène soit prête
+      document.querySelector('a-scene').addEventListener('loaded', startVideoMuted);
+
+      // 4) Bouton pour activer le son
       btn.addEventListener("click", () => {
         vid.muted = false;
         vid.play().catch(err => console.log("Erreur lecture:", err));
         btn.style.display = "none";
       });
 
-      // 5) Positionner le panneau vidéo aux bonnes coordonnées GPS
+      // 5) Positionner le panneau vidéo aux coordonnées GPS
       window.addEventListener("load", () => {
         if (lat && lng && plane) {
           plane.setAttribute(
@@ -168,7 +163,7 @@
         }
       });
 
-      // 6) Debug GPS (optionnel)
+      // 6) Debug GPS
       const camera = document.getElementById("urbainar-camera");
       camera.addEventListener("gps-camera-update-position", e => {
         console.log("GPS update:", e.detail.position);
