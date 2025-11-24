@@ -2,12 +2,12 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <title>UrbainAR WebAR Supabase</title>
+    <title>UrbainAR WebAR Supabase (géolocalisé)</title>
 
     <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <!-- AR.js pour A-Frame -->
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    <!-- AR.js A-Frame build avec location-based -->
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
       body, html {
@@ -26,56 +26,89 @@
         border-radius: 4px;
         font-size: 14px;
       }
+      #info {
+        position: fixed;
+        z-index: 10;
+        top: 10px;
+        left: 10px;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        font-size: 12px;
+        max-width: 80%;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
     </style>
   </head>
   <body>
+    <div id="info">
+      Autorise caméra, géolocalisation et orientation pour voir la vidéo au bon endroit.
+    </div>
+
+    <!-- Vidéo HTML5 -->
+    <video
+      id="video-texture"
+      src=""
+      loop="true"
+      crossorigin="anonymous"
+      webkit-playsinline
+      playsinline
+    ></video>
+
     <a-scene
       embedded
-      xr-mode-ui="enabled: false"
+      vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true"
-      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+      arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
     >
-      <!-- Vidéo HTML5 -->
-      <video
-        id="video-texture"
-        src="https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-videos/video_0061bed7-6c43-43fe-814b-4c9288a7c65e.mp4"
-        loop="true"
-        crossorigin="anonymous"
-        webkit-playsinline
-        playsinline
-      ></video>
+      <!-- Caméra géolocalisée -->
+      <a-camera
+        id="urbainar-camera"
+        gps-new-camera="gpsMinDistance: 5; positionMinAccuracy: 100"
+        arjs-device-orientation-controls="smoothingFactor: 0.1"
+        look-controls="enabled: false"
+      ></a-camera>
 
-      <!-- Marker Hiro -->
-      <a-marker preset="hiro">
-        <a-video
-          id="video-plane"
-          src="#video-texture"
-          width="1.0"
-          height="1.0"
-          position="0 0 0"
-          rotation="-90 0 0"
-        ></a-video>
-      </a-marker>
-
-      <a-entity camera></a-entity>
+      <!-- Panneau vidéo géolocalisé -->
+      <a-video
+        id="video-plane"
+        src="#video-texture"
+        gps-new-entity-place="latitude: 0; longitude: 0"
+        position="0 3 0"
+        rotation="-90 0 0"
+        width="1.5"
+        height="1.0"
+      ></a-video>
     </a-scene>
 
     <button id="playWithSound">Activer le son</button>
 
     <script>
-      const vid = document.getElementById("video-texture");
-      const btn = document.getElementById("playWithSound");
+      const vid   = document.getElementById("video-texture");
+      const btn   = document.getElementById("playWithSound");
       const plane = document.getElementById("video-plane");
+      const info  = document.getElementById("info");
 
-      // 1) Lire ?video=... dans l'URL
+      // 1) Lire ?video=...&lat=...&lng=... dans l'URL
+      let lat = null;
+      let lng = null;
+
       try {
         const params = new URLSearchParams(window.location.search);
         const videoParam = params.get("video");
+        lat = params.get("lat");
+        lng = params.get("lng");
+
         if (videoParam) {
           vid.src = decodeURIComponent(videoParam);
         }
+
+        if (!lat || !lng) {
+          info.textContent = "Paramètres lat / lng manquants dans l'URL.";
+        }
       } catch (e) {
-        console.log("Erreur lecture paramètre video:", e);
+        console.log("Erreur lecture paramètres URL:", e);
+        info.textContent = "Erreur de lecture des paramètres d'URL.";
       }
 
       // 2) Quand les métadonnées sont chargées, ajuster le ratio du plan
@@ -84,9 +117,8 @@
         const vh = vid.videoHeight;
         if (!vw || !vh || !plane) return;
 
-        // largeur de base en mètres (taille du panneau)
         const baseWidth = 1.5;
-        const aspect = vh / vw; // hauteur / largeur pour respecter le ratio
+        const aspect = vh / vw;
         const finalWidth = baseWidth;
         const finalHeight = baseWidth * aspect;
 
@@ -103,6 +135,24 @@
         vid.muted = false;
         vid.play().catch(err => console.log("Erreur lecture:", err));
         btn.style.display = "none";
+      });
+
+      // 5) Positionner le panneau vidéo aux bonnes coordonnées GPS
+      window.addEventListener("load", () => {
+        if (lat && lng && plane) {
+          plane.setAttribute(
+            "gps-new-entity-place",
+            `latitude: ${lat}; longitude: ${lng}`
+          );
+          info.textContent =
+            "Déplace-toi vers le lieu et oriente ton téléphone pour voir la vidéo.";
+        }
+      });
+
+      // 6) (Optionnel) debug des updates GPS
+      const camera = document.getElementById("urbainar-camera");
+      camera.addEventListener("gps-camera-update-position", e => {
+        console.log("GPS update:", e.detail.position);
       });
     </script>
   </body>
