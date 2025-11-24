@@ -45,20 +45,19 @@
       Autorise caméra, géolocalisation et orientation pour voir la vidéo au bon endroit.
     </div>
 
-<!-- Vidéo HTML5 (texture uniquement, jamais en plein écran) -->
-<video
-  id="video-texture"
-  src=""
-  loop="true"
-  muted
-  playsinline
-  webkit-playsinline
-  x-webkit-airplay="allow"
-  controls="false"
-  style="display:none;"
-  crossorigin="anonymous"
-></video>
-
+    <!-- Vidéo HTML5 (texture uniquement) -->
+    <video
+      id="video-texture"
+      src=""
+      loop="true"
+      muted
+      playsinline
+      webkit-playsinline
+      x-webkit-airplay="allow"
+      controls="false"
+      style="width:1px;height:1px;opacity:0;position:absolute;left:-9999px;top:-9999px;"
+      crossorigin="anonymous"
+    ></video>
 
     <a-scene
       embedded
@@ -74,7 +73,7 @@
         look-controls="enabled: false"
       ></a-camera>
 
-      <!-- Panneau vidéo géolocalisé (taille réduite) -->
+      <!-- Panneau vidéo géolocalisé -->
       <a-video
         id="video-plane"
         src="#video-texture"
@@ -117,13 +116,13 @@
         info.textContent = "Erreur de lecture des paramètres d'URL.";
       }
 
-      // 2) Quand les métadonnées sont chargées, ajuster le ratio du plan (en gardant une base petite)
+      // 2) Quand les métadonnées sont chargées, ajuster le ratio du panneau
       vid.addEventListener("loadedmetadata", () => {
         const vw = vid.videoWidth;
         const vh = vid.videoHeight;
         if (!vw || !vh || !plane) return;
 
-        const baseWidth = 0.8; // plus petit qu'avant
+        const baseWidth = 0.8; // panneau plus petit
         const aspect = vh / vw;
         const finalWidth = baseWidth;
         const finalHeight = baseWidth * aspect;
@@ -132,9 +131,16 @@
         plane.setAttribute("height", finalHeight);
       });
 
-      // 3) Démarrage auto en muet
+      // 3) Démarrage auto en muet + synchro texture
       vid.muted = true;
-      vid.play().catch(() => {});
+      vid.play().then(() => {
+        if (plane && plane.components && plane.components.material) {
+          const tex = plane.components.material.material.map;
+          if (tex && tex.image === vid) {
+            tex.needsUpdate = true;
+          }
+        }
+      }).catch(() => {});
 
       // 4) Au clic, activer le son
       btn.addEventListener("click", () => {
