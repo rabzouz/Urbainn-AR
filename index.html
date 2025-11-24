@@ -45,15 +45,17 @@
       Autorise caméra, géolocalisation et orientation pour voir la vidéo au bon endroit.
     </div>
 
-    <!-- Vidéo HTML5 -->
-    <video
-      id="video-texture"
-      src=""
-      loop="true"
-      crossorigin="anonymous"
-      webkit-playsinline
-      playsinline
-    ></video>
+<!-- Vidéo HTML5 (texture uniquement, jamais en plein écran) -->
+<video
+  id="video-texture"
+  src=""
+  loop="true"
+  muted
+  playsinline
+  webkit-playsinline
+  crossorigin="anonymous"
+></video>
+
 
     <a-scene
       embedded
