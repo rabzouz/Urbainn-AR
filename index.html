@@ -4,8 +4,11 @@
     <meta charset="utf-8" />
     <title>UrbainAR WebAR (toutes vidéos)</title>
 
+    <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- AR.js -->
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
+    <!-- Gestes (pinch zoom, etc.) -->
     <script src="https://cdn.jsdelivr.net/gh/fcor/arjs-gestures@master/dist/gestures.js"></script>
 
     <style>
@@ -38,7 +41,6 @@
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
-      /* Barre “fenêtre vidéo” en bas */
       #video-ui {
         position: fixed;
         z-index: 11;
@@ -55,9 +57,7 @@
         font-size: 13px;
       }
 
-      #video-title {
-        font-weight: 600;
-      }
+      #video-title { font-weight: 600; }
 
       #video-stats {
         display: flex;
@@ -82,11 +82,8 @@
     </style>
   </head>
   <body>
-    <div id="info">
-      Chargement de la vidéo...
-    </div>
+    <div id="info">Chargement de la vidéo...</div>
 
-    <!-- Fenêtre vidéo / stats -->
     <div id="video-ui">
       <div>
         <div id="video-title">UrbainAR</div>
@@ -107,7 +104,7 @@
       arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
     >
       <a-assets>
-        <!-- La SRC sera mise à jour depuis ?video=... -->
+        <!-- vidéo principale (celle cliquée) -->
         <video
           id="video-texture"
           src=""
@@ -120,93 +117,173 @@
       </a-assets>
 
       <a-camera></a-camera>
-
-      <!-- Panneau vidéo devant la caméra, avec zoom au pinch -->
-      <a-video
-        id="video-plane"
-        src="#video-texture"
-        position="0 1.5 -8"
-        rotation="0 0 0"
-        width="1.5"
-        height="0.9"
-        gesture-handler="minScale: 0.2; maxScale: 2"
-      ></a-video>
     </a-scene>
 
     <script>
-      const vid        = document.getElementById("video-texture");
-      const btn        = document.getElementById("playWithSound");
-      const plane      = document.getElementById("video-plane");
-      const info       = document.getElementById("info");
-      const viewsEl    = document.getElementById("video-views");
-      const likesEl    = document.getElementById("video-likes");
-      const likeBtn    = document.getElementById("likeBtn");
-      const titleEl    = document.getElementById("video-title");
+      const vid       = document.getElementById("video-texture");
+      const btn       = document.getElementById("playWithSound");
+      const info      = document.getElementById("info");
+      const viewsEl   = document.getElementById("video-views");
+      const likesEl   = document.getElementById("video-likes");
+      const likeBtn   = document.getElementById("likeBtn");
+      const titleEl   = document.getElementById("video-title");
+      const sceneEl   = document.querySelector("a-scene");
 
-      // 1) Lire ?video=... et éventuellement ?title=... dans l'URL
       let videoUrl = null;
-      let videoId  = null; // futur id Firestore
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const videoParam = params.get("video");
-        const titleParam = params.get("title");
-        videoId = params.get("id") || null;
+      let videoId  = null;
+      let clusterVideos = [];
+      const htmlVideos = []; // toutes les balises <video> créées (pour activer le son)
 
-        if (videoParam) {
-          videoUrl = decodeURIComponent(videoParam);
-          vid.src = videoUrl;
-          info.textContent = "Vidéo chargée. Autorise la caméra, puis appuie sur Activer le son.";
+      function getParams() {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const videoParam   = params.get("video");
+          const titleParam   = params.get("title");
+          const idParam      = params.get("id");
+          const clusterParam = params.get("cluster");
+
+          if (videoParam) {
+            videoUrl = decodeURIComponent(videoParam);
+            vid.src = videoUrl;
+            info.textContent = "Vidéo chargée. Autorise la caméra, puis appuie sur Activer le son.";
+          } else {
+            info.textContent = "Paramètre ?video= manquant dans l'URL.";
+          }
+
           if (titleParam) {
             titleEl.textContent = decodeURIComponent(titleParam);
           }
-        } else {
-          info.textContent = "Paramètre ?video= manquant dans l'URL.";
+
+          videoId = idParam || null;
+
+          if (clusterParam) {
+            const json = decodeURIComponent(clusterParam);
+            clusterVideos = JSON.parse(json); // liste de VideoData
+          }
+        } catch (e) {
+          console.log("Erreur lecture paramètres URL:", e);
+          info.textContent = "Erreur de lecture des paramètres d'URL.";
         }
-      } catch (e) {
-        console.log("Erreur lecture paramètres URL:", e);
-        info.textContent = "Erreur de lecture des paramètres d'URL.";
       }
 
-      // 2) Ajuster le ratio du panneau dès que les métadonnées sont connues
+      function createHtmlVideo(id, src, autoplayMuted = true) {
+        const videoEl = document.createElement("video");
+        videoEl.id = id;
+        videoEl.src = src;
+        videoEl.loop = true;
+        videoEl.crossOrigin = "anonymous";
+        videoEl.setAttribute("playsinline", "");
+        videoEl.setAttribute("webkit-playsinline", "");
+        if (autoplayMuted) {
+          videoEl.muted = true;
+          videoEl.play().catch(() => {});
+        }
+        document.body.appendChild(videoEl);
+        htmlVideos.push(videoEl);
+        return videoEl;
+      }
+
+      function createVideoPanel(videoId, index, total) {
+        const radius = 4;      // distance autour de la caméra
+        const yPos   = 1.6;    // hauteur
+        const angle  = (index / total) * 2 * Math.PI;
+        const x = radius * Math.cos(angle);
+        const z = -radius * Math.sin(angle);
+
+        const panel = document.createElement("a-entity");
+        panel.setAttribute("geometry", "primitive: plane; height: 1.2; width: 0.7");
+        panel.setAttribute("material", `shader: flat; src: #${videoId}`);
+        panel.setAttribute("position", `${x} ${yPos} ${z}`);
+        panel.setAttribute("look-at", "[camera]");
+
+        panel.addEventListener("click", () => {
+          const v = document.getElementById(videoId);
+          v.muted = false;
+          v.play().catch(err => console.log("Erreur lecture:", err));
+          btn.style.display = "none";
+        });
+
+        sceneEl.appendChild(panel);
+      }
+
+      function createMainPanel() {
+        // Panneau principal devant la caméra avec #video-texture
+        const panel = document.createElement("a-entity");
+        panel.setAttribute("geometry", "primitive: plane; height: 0.9; width: 1.5");
+        panel.setAttribute("material", "shader: flat; src: #video-texture");
+        panel.setAttribute("position", "0 1.6 -3");
+        panel.setAttribute("look-at", "[camera]");
+        panel.setAttribute("gesture-handler", "minScale: 0.2; maxScale: 2");
+
+        panel.addEventListener("click", () => {
+          vid.muted = false;
+          vid.play().catch(err => console.log("Erreur lecture:", err));
+          btn.style.display = "none";
+        });
+
+        sceneEl.appendChild(panel);
+      }
+
+      function setupClusterPanels() {
+        if (!clusterVideos || !clusterVideos.length) return;
+        clusterVideos.forEach((v, index) => {
+          const id = `vid_${v.id}`;
+          createHtmlVideo(id, v.videoUrl);
+          createVideoPanel(id, index, clusterVideos.length);
+        });
+      }
+
+      getParams();
+
+      // Ajuster le ratio du plan principal
       vid.addEventListener("loadedmetadata", () => {
         const vw = vid.videoWidth;
         const vh = vid.videoHeight;
-        if (!vw || !vh || !plane) return;
-
-        const baseWidth   = 1.5;
-        const aspect      = vh / vw;
-        const finalWidth  = baseWidth;
+        if (!vw || !vh) return;
+        const aspect = vh / vw;
+        const baseWidth = 1.5;
+        const finalWidth = baseWidth;
         const finalHeight = baseWidth * aspect;
 
-        plane.setAttribute("width", finalWidth);
-        plane.setAttribute("height", finalHeight);
+        const mainPanel = sceneEl.querySelector("[material*='#video-texture']");
+        if (mainPanel) {
+          mainPanel.setAttribute("width", finalWidth);
+          mainPanel.setAttribute("height", finalHeight);
+        }
       });
 
-      // 3) Démarrage muet quand la scène est prête
-      document.querySelector("a-scene").addEventListener("loaded", () => {
+      // Quand la scène est prête
+      sceneEl.addEventListener("loaded", () => {
         if (!videoUrl) return;
+
+        // vidéo principale en muet
         vid.muted = true;
         vid.play().then(() => {
-          const mesh = plane.getObject3D("mesh");
+          const mesh = sceneEl.querySelector("[material*='#video-texture']")?.getObject3D("mesh");
           if (mesh && mesh.material && mesh.material.map) {
             mesh.material.map.needsUpdate = true;
           }
         }).catch(err => console.log("autoplay error:", err));
 
-        // Ici, plus tard : appel backend pour incrementer les vues + charger views/likes initiaux
-        // Exemple d'initialisation front-only pour la démo :
+        // Panneau principal + panneaux du cluster
+        createMainPanel();
+        setupClusterPanels();
+
+        // Démo: vue = 1
         viewsEl.textContent = "1 vue";
       });
 
-      // 4) Bouton pour activer le son
+      // Bouton global pour activer le son sur toutes les vidéos
       btn.addEventListener("click", () => {
         if (!videoUrl) return;
-        vid.muted = false;
-        vid.play().catch(err => console.log("play error:", err));
+        htmlVideos.concat([vid]).forEach(v => {
+          v.muted = false;
+          v.play().catch(err => console.log("play error:", err));
+        });
         btn.style.display = "none";
       });
 
-      // 5) Bouton j'aime (coeur) – version front (sans Firestore pour l'instant)
+      // Bouton like local (front-only)
       let localLikes = 0;
       let liked = false;
 
@@ -220,9 +297,7 @@
           likeBtn.textContent = "♡";
         }
         likesEl.textContent = localLikes.toString();
-
-        // Ici, plus tard : appel backend / Firestore pour sauver le like
-        // ex: fetch("https://TON_BACKEND/likeVideo", { method:"POST", body: JSON.stringify({videoId}) })
+        // Ici plus tard: appel backend / Firestore pour sauver le like (videoId)
       });
     </script>
   </body>
