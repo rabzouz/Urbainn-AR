@@ -133,6 +133,7 @@
       let videoId  = null;
       let clusterVideos = [];
       const htmlVideos = []; // toutes les balises <video> créées (pour activer le son)
+      let mainPanel = null;  // panneau principal devant la caméra
 
       function getParams() {
         try {
@@ -207,21 +208,20 @@
       }
 
       function createMainPanel() {
-        // Panneau principal devant la caméra avec #video-texture
-        const panel = document.createElement("a-entity");
-        panel.setAttribute("geometry", "primitive: plane; height: 0.9; width: 1.5");
-        panel.setAttribute("material", "shader: flat; src: #video-texture");
-        panel.setAttribute("position", "0 1.6 -3");
-        panel.setAttribute("look-at", "[camera]");
-        panel.setAttribute("gesture-handler", "minScale: 0.2; maxScale: 2");
+        mainPanel = document.createElement("a-entity");
+        mainPanel.setAttribute("geometry", "primitive: plane; height: 0.9; width: 1.5");
+        mainPanel.setAttribute("material", "shader: flat; src: #video-texture");
+        mainPanel.setAttribute("position", "0 1.6 -3");
+        mainPanel.setAttribute("look-at", "[camera]");
+        mainPanel.setAttribute("gesture-handler", "minScale: 0.2; maxScale: 2");
 
-        panel.addEventListener("click", () => {
+        mainPanel.addEventListener("click", () => {
           vid.muted = false;
           vid.play().catch(err => console.log("Erreur lecture:", err));
           btn.style.display = "none";
         });
 
-        sceneEl.appendChild(panel);
+        sceneEl.appendChild(mainPanel);
       }
 
       function setupClusterPanels() {
@@ -235,39 +235,36 @@
 
       getParams();
 
-      // Ajuster le ratio du plan principal
+      // Ajuster le ratio du panneau principal quand la vidéo est prête
       vid.addEventListener("loadedmetadata", () => {
         const vw = vid.videoWidth;
         const vh = vid.videoHeight;
-        if (!vw || !vh) return;
+        if (!vw || !vh || !mainPanel) return;
         const aspect = vh / vw;
         const baseWidth = 1.5;
         const finalWidth = baseWidth;
         const finalHeight = baseWidth * aspect;
 
-        const mainPanel = sceneEl.querySelector("[material*='#video-texture']");
-        if (mainPanel) {
-          mainPanel.setAttribute("width", finalWidth);
-          mainPanel.setAttribute("height", finalHeight);
-        }
+        mainPanel.setAttribute("width", finalWidth);
+        mainPanel.setAttribute("height", finalHeight);
       });
 
       // Quand la scène est prête
       sceneEl.addEventListener("loaded", () => {
         if (!videoUrl) return;
 
+        // Panneau principal + panneaux du cluster
+        createMainPanel();
+        setupClusterPanels();
+
         // vidéo principale en muet
         vid.muted = true;
         vid.play().then(() => {
-          const mesh = sceneEl.querySelector("[material*='#video-texture']")?.getObject3D("mesh");
+          const mesh = mainPanel.getObject3D("mesh");
           if (mesh && mesh.material && mesh.material.map) {
             mesh.material.map.needsUpdate = true;
           }
         }).catch(err => console.log("autoplay error:", err));
-
-        // Panneau principal + panneaux du cluster
-        createMainPanel();
-        setupClusterPanels();
 
         // Démo: vue = 1
         viewsEl.textContent = "1 vue";
