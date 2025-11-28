@@ -2,19 +2,30 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>UrbainAR - Toutes les vidéos</title>
+    <title>UrbainAR - Test Debug</title>
 
     <script src="https://aframe.io/releases/0.8.0/aframe.min.js"></script>
     <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.6.0/aframe/build/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
       body, html { margin: 0; overflow: hidden; }
-
-      #playWithSound {
+      
+      #info {
         position: fixed;
         z-index: 10;
-        bottom: 80px;
+        top: 10px;
+        left: 10px;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        font-size: 12px;
+        font-family: sans-serif;
+      }
+
+      #playBtn {
+        position: fixed;
+        z-index: 10;
+        bottom: 20px;
         left: 50%;
         transform: translateX(-50%);
         padding: 12px 24px;
@@ -24,210 +35,65 @@
         border-radius: 8px;
         font-size: 16px;
         font-weight: bold;
-        font-family: sans-serif;
-        cursor: pointer;
-      }
-
-      #info {
-        position: fixed;
-        z-index: 10;
-        top: 10px;
-        left: 10px;
-        padding: 8px 12px;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        font-size: 12px;
-        font-family: sans-serif;
-      }
-
-      #video-ui {
-        position: fixed;
-        z-index: 11;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        padding: 10px 14px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(0, 0, 0, 0.75);
-        color: #fff;
-        font-family: sans-serif;
-        font-size: 13px;
-      }
-
-      #video-title { font-weight: 600; }
-
-      #video-stats {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      #likeBtn {
-        background: transparent;
-        border: none;
-        color: #ff5a7a;
-        font-size: 20px;
         cursor: pointer;
       }
     </style>
   </head>
 
   <body style='margin: 0; overflow: hidden;'>
-    <div id="info">Chargement des vidéos...</div>
+    <div id="info">Test vidéo simple. Vise Hiro.</div>
+    <button id="playBtn">🔊 Activer le son</button>
 
-    <div id="video-ui">
-      <div>
-        <div id="video-title">UrbainAR</div>
-        <div id="video-views">-- vues</div>
-      </div>
-      <div id="video-stats">
-        <button id="likeBtn">♡</button>
-        <span id="video-likes">0</span>
-      </div>
-    </div>
+    <a-scene embedded arjs>
+      <a-assets>
+        <video
+          id="vid"
+          src="https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-videos/video_f27db215-1cb8-40d2-aa8a-4418eb3214c4.mp4"
+          loop
+          autoplay
+          muted
+          playsinline
+          webkit-playsinline
+          crossorigin="anonymous"
+        ></video>
+      </a-assets>
 
-    <button id="playWithSound">🔊 Activer le son</button>
-
-    <a-scene id="scene" embedded arjs>
-      <a-assets id="assets"></a-assets>
-
-      <a-marker preset="hiro" id="hiroMarker"></a-marker>
+      <a-marker preset="hiro">
+        <a-video
+          src="#vid"
+          position="0 0 0"
+          rotation="-90 0 0"
+          width="0.9"
+          height="1.6"
+        ></a-video>
+      </a-marker>
 
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      const { createClient } = supabase;
-
+      console.log('Script chargé');
+      const vid = document.getElementById('vid');
+      const btn = document.getElementById('playBtn');
       const info = document.getElementById('info');
-      const btn = document.getElementById('playWithSound');
-      const likeBtn = document.getElementById('likeBtn');
-      const likesEl = document.getElementById('video-likes');
-      const titleEl = document.getElementById('video-title');
-      const viewsEl = document.getElementById('video-views');
 
-      const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
-      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
+      vid.addEventListener('canplay', function() {
+        console.log('Vidéo prête');
+        vid.play();
+        info.textContent = 'Vidéo prête. Vise Hiro.';
+      });
 
-      const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-      let videos = [];
-      let videoElements = [];
-      let currentVideoIndex = 0;
-
-      async function loadVideos() {
-        try {
-          info.textContent = 'Chargement des vidéos...';
-          
-          const { data, error } = await supabaseClient
-            .from('videos')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(10);
-
-          if (error) throw error;
-
-          videos = data || [];
-          info.textContent = `${videos.length} vidéo(s) chargée(s). Vise le marker Hiro.`;
-
-          if (videos.length === 0) {
-            info.textContent = 'Aucune vidéo trouvée. Utilise l\'app pour poster une vidéo !';
-            return;
-          }
-
-          createVideoPlanes();
-        } catch (err) {
-          console.error('Erreur:', err);
-          info.textContent = 'Erreur: ' + err.message;
-        }
-      }
-
-      function createVideoPlanes() {
-        const assets = document.getElementById('assets');
-        const marker = document.getElementById('hiroMarker');
-        const radius = 2;
-        const angleStep = (2 * Math.PI) / videos.length;
-
-        videos.forEach((video, index) => {
-          const videoEl = document.createElement('video');
-          videoEl.id = `vid-${video.id}`;
-          videoEl.src = video.video_url;
-          videoEl.loop = true;
-          videoEl.muted = true;
-          videoEl.setAttribute('playsinline', '');
-          videoEl.setAttribute('webkit-playsinline', '');
-          videoEl.setAttribute('crossorigin', 'anonymous');
-          assets.appendChild(videoEl);
-          videoElements.push(videoEl);
-
-          const angle = index * angleStep;
-          const x = radius * Math.cos(angle);
-          const z = -radius * Math.sin(angle);
-
-          const plane = document.createElement('a-video');
-          plane.setAttribute('src', `#vid-${video.id}`);
-          plane.setAttribute('position', `${x} 0 ${z}`);
-          plane.setAttribute('rotation', '-90 0 0');
-          plane.setAttribute('width', '0.6');
-          plane.setAttribute('height', '1.1');
-          plane.setAttribute('data-video-index', index);
-
-          plane.addEventListener('click', () => {
-            currentVideoIndex = index;
-            updateUI(video);
-            playVideo(videoEl);
-          });
-
-          marker.appendChild(plane);
-        });
-
-        if (videoElements.length > 0) {
-          videoElements[0].play().catch(e => console.log('autoplay:', e));
-          updateUI(videos[0]);
-        }
-      }
-
-      function updateUI(video) {
-        titleEl.textContent = video.title || 'UrbainAR';
-        viewsEl.textContent = (video.view_count || 0) + ' vues';
-        likesEl.textContent = video.like_count || 0;
-      }
-
-      function playVideo(videoEl) {
-        videoElements.forEach(v => {
-          if (v !== videoEl) v.pause();
-        });
-        videoEl.play();
-      }
+      vid.addEventListener('error', function(e) {
+        console.error('Erreur vidéo:', e);
+        info.textContent = 'Erreur chargement vidéo !';
+      });
 
       btn.addEventListener('click', function() {
-        videoElements.forEach(v => {
-          v.muted = false;
-          v.play();
-        });
+        console.log('Activation son');
+        vid.muted = false;
+        vid.play();
         btn.style.display = 'none';
         info.textContent = 'Son activé !';
-      });
-
-      let localLikes = 0;
-      let liked = false;
-
-      likeBtn.addEventListener('click', function() {
-        liked = !liked;
-        if (liked) {
-          localLikes += 1;
-          likeBtn.textContent = '❤';
-        } else {
-          localLikes = Math.max(0, localLikes - 1);
-          likeBtn.textContent = '♡';
-        }
-        likesEl.textContent = localLikes.toString();
-      });
-
-      document.getElementById('scene').addEventListener('loaded', () => {
-        loadVideos();
       });
     </script>
   </body>
