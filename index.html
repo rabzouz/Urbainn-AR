@@ -6,7 +6,6 @@
 
     <script src="https://aframe.io/releases/0.8.0/aframe.min.js"></script>
     <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.6.0/aframe/build/aframe-ar.js"></script>
-    <!-- Supabase JS v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 
     <style>
@@ -15,7 +14,7 @@
       #playBtn {
         position: fixed;
         z-index: 10;
-        bottom: 80px;
+        bottom: 140px;
         left: 50%;
         transform: translateX(-50%);
         padding: 12px 24px;
@@ -72,6 +71,23 @@
         font-size: 20px;
         cursor: pointer;
       }
+
+      .nav-btn {
+        position: fixed;
+        z-index: 10;
+        bottom: 70px;
+        padding: 12px 16px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        cursor: pointer;
+        font-family: sans-serif;
+      }
+
+      #prevBtn { left: 20px; }
+      #nextBtn { right: 20px; }
     </style>
   </head>
 
@@ -90,6 +106,8 @@
     </div>
 
     <button id="playBtn">🔊 Activer le son</button>
+    <button id="prevBtn" class="nav-btn">◀</button>
+    <button id="nextBtn" class="nav-btn">▶</button>
 
     <a-scene id="scene" embedded arjs>
       <a-assets id="assets"></a-assets>
@@ -106,17 +124,19 @@
       const likesEl = document.getElementById('video-likes');
       const titleEl = document.getElementById('video-title');
       const viewsEl = document.getElementById('video-views');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
 
       const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
       const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
 
-      // Créer client Supabase
       const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       console.log('Client Supabase créé');
 
       let videos = [];
       let videoElements = [];
       let currentVideo = null;
+      let currentIndex = 0;
 
       async function loadVideos() {
         try {
@@ -127,7 +147,7 @@
             .from('videos')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(10);
+            .limit(20);
 
           if (error) {
             console.error('Erreur Supabase:', error);
@@ -140,7 +160,15 @@
 
           if (videos.length === 0) {
             info.textContent = 'Aucune vidéo. Utilise l\'app pour poster !';
+            prevBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
             return;
+          }
+
+          // Cacher navigation si une seule vidéo
+          if (videos.length === 1) {
+            prevBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
           }
 
           createVideoPlanes();
@@ -153,9 +181,6 @@
       function createVideoPlanes() {
         const assets = document.getElementById('assets');
         const marker = document.getElementById('hiroMarker');
-        
-        const radius = 2;
-        const angleStep = (2 * Math.PI) / videos.length;
 
         videos.forEach((video, index) => {
           // Créer élément vidéo
@@ -169,29 +194,24 @@
           videoEl.setAttribute('crossorigin', 'anonymous');
           
           videoEl.addEventListener('canplay', () => {
-            console.log('Vidéo prête:', video.id);
+            console.log('Vidéo prête:', video.title);
+          });
+
+          videoEl.addEventListener('error', (e) => {
+            console.error('Erreur vidéo:', video.title, e);
           });
 
           assets.appendChild(videoEl);
           videoElements.push({ video: video, element: videoEl });
 
-          // Position en cercle
-          const angle = index * angleStep;
-          const x = radius * Math.cos(angle);
-          const z = -radius * Math.sin(angle);
-
-          // Créer plan AR
+          // Position CENTRÉE sur le marker
           const plane = document.createElement('a-video');
           plane.setAttribute('src', `#vid-${video.id}`);
-          plane.setAttribute('position', `${x} 0 ${z}`);
+          plane.setAttribute('position', '0 0.5 0');
           plane.setAttribute('rotation', '-90 0 0');
-          plane.setAttribute('width', '0.6');
-          plane.setAttribute('height', '1.1');
-
-          plane.addEventListener('click', () => {
-            console.log('Click vidéo:', video.title);
-            selectVideo(index);
-          });
+          plane.setAttribute('width', '0.9');
+          plane.setAttribute('height', '1.6');
+          plane.setAttribute('visible', index === 0);
 
           marker.appendChild(plane);
         });
@@ -203,6 +223,7 @@
       }
 
       function selectVideo(index) {
+        currentIndex = index;
         const item = videoElements[index];
         currentVideo = item;
         
@@ -210,6 +231,14 @@
         titleEl.textContent = item.video.title || 'UrbainAR';
         viewsEl.textContent = (item.video.view_count || 0) + ' vues';
         likesEl.textContent = item.video.like_count || 0;
+        info.textContent = `Vidéo ${index + 1}/${videos.length}`;
+
+        // Afficher seulement cette vidéo
+        const marker = document.getElementById('hiroMarker');
+        const planes = marker.querySelectorAll('a-video');
+        planes.forEach((plane, i) => {
+          plane.setAttribute('visible', i === index);
+        });
 
         // Play cette vidéo, pause les autres
         videoElements.forEach((v, i) => {
@@ -221,6 +250,22 @@
         });
       }
 
+      // Navigation
+      prevBtn.addEventListener('click', () => {
+        if (videos.length > 0) {
+          currentIndex = (currentIndex - 1 + videos.length) % videos.length;
+          selectVideo(currentIndex);
+        }
+      });
+
+      nextBtn.addEventListener('click', () => {
+        if (videos.length > 0) {
+          currentIndex = (currentIndex + 1) % videos.length;
+          selectVideo(currentIndex);
+        }
+      });
+
+      // Activer son
       btn.addEventListener('click', function() {
         console.log('Activation son');
         videoElements.forEach(v => {
@@ -237,17 +282,26 @@
       let liked = false;
 
       likeBtn.addEventListener('click', function() {
+        if (!currentVideo) return;
+
         liked = !liked;
         if (liked) {
           likeBtn.textContent = '❤';
-          likesEl.textContent = parseInt(likesEl.textContent) + 1;
+          const newCount = (currentVideo.video.like_count || 0) + 1;
+          likesEl.textContent = newCount;
+          currentVideo.video.like_count = newCount;
+          
+          // TODO: Sauvegarder dans Supabase
+          // supabaseClient.from('videos').update({ like_count: newCount }).eq('id', currentVideo.video.id)
         } else {
           likeBtn.textContent = '♡';
-          likesEl.textContent = Math.max(0, parseInt(likesEl.textContent) - 1);
+          const newCount = Math.max(0, (currentVideo.video.like_count || 0) - 1);
+          likesEl.textContent = newCount;
+          currentVideo.video.like_count = newCount;
         }
       });
 
-      // Charger au démarrage de la scène
+      // Charger au démarrage
       document.getElementById('scene').addEventListener('loaded', () => {
         console.log('Scène A-Frame chargée');
         loadVideos();
