@@ -2,97 +2,39 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>UrbainAR WebAR</title>
+    <title>UrbainAR - Test Vidéo</title>
 
     <script src="https://aframe.io/releases/0.8.0/aframe.min.js"></script>
     <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.6.0/aframe/build/aframe-ar.js"></script>
 
     <style>
       body, html { margin: 0; overflow: hidden; }
-
-      #playWithSound {
-        position: fixed;
-        z-index: 10;
-        bottom: 60px;
-        left: 12px;
-        padding: 8px 12px;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        font-size: 14px;
-        font-family: sans-serif;
-      }
-
+      
       #info {
         position: fixed;
         z-index: 10;
         top: 10px;
         left: 10px;
-        padding: 8px 12px;
-        background: rgba(0, 0, 0, 0.6);
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.7);
         color: white;
         font-size: 12px;
-        max-width: 80%;
         font-family: sans-serif;
-      }
-
-      #video-ui {
-        position: fixed;
-        z-index: 11;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        padding: 10px 14px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(0, 0, 0, 0.75);
-        color: #fff;
-        font-family: sans-serif;
-        font-size: 13px;
-      }
-
-      #video-title { font-weight: 600; }
-
-      #video-stats {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      #likeBtn {
-        background: transparent;
-        border: none;
-        color: #ff5a7a;
-        font-size: 20px;
-        cursor: pointer;
       }
     </style>
   </head>
 
   <body style='margin: 0; overflow: hidden;'>
-    <div id="info">Chargement...</div>
-
-    <div id="video-ui">
-      <div>
-        <div id="video-title">UrbainAR</div>
-        <div id="video-views">0 vues</div>
-      </div>
-      <div id="video-stats">
-        <button id="likeBtn">♡</button>
-        <span id="video-likes">0</span>
-      </div>
-    </div>
-
-    <button id="playWithSound">Activer le son</button>
+    <div id="info">Vidéo de test chargée. Vise le marker fenetre.</div>
 
     <a-scene embedded arjs>
       <a-assets>
+        <!-- VIDÉO TEST EN DUR -->
         <video
-          id="video-texture"
-          src=""
+          id="vid"
+          src="https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-videos/video_f27db215-1cb8-40d2-aa8a-4418eb3214c4.mp4"
           loop
+          autoplay
           muted
           playsinline
           webkit-playsinline
@@ -103,11 +45,9 @@
       <a-marker
         type="pattern"
         url="markers/fenetre.patt"
-        id="fenetreMarker"
       >
         <a-video
-          id="videoPlane"
-          src="#video-texture"
+          src="#vid"
           position="0 0 0"
           rotation="-90 0 0"
           width="0.9"
@@ -119,106 +59,12 @@
     </a-scene>
 
     <script>
-      const vid = document.getElementById("video-texture");
-      const btn = document.getElementById("playWithSound");
-      const info = document.getElementById("info");
-      const viewsEl = document.getElementById("video-views");
-      const likesEl = document.getElementById("video-likes");
-      const likeBtn = document.getElementById("likeBtn");
-      const titleEl = document.getElementById("video-title");
-
-      let videoUrl = null;
-      let videoId = null;
-
-      function getParams() {
-        try {
-          const params = new URLSearchParams(window.location.search);
-          const videoParam = params.get("video");
-          const titleParam = params.get("title");
-          const idParam = params.get("id");
-
-          if (videoParam) {
-            videoUrl = decodeURIComponent(videoParam);
-            vid.src = videoUrl;
-            info.textContent = "Vidéo chargée. Autorise la caméra puis active le son.";
-          } else {
-            info.textContent = "Paramètre ?video= manquant.";
-          }
-
-          if (titleParam) {
-            titleEl.textContent = decodeURIComponent(titleParam);
-          }
-
-          videoId = idParam || null;
-        } catch (e) {
-          console.log("Erreur params:", e);
-          info.textContent = "Erreur paramètres URL.";
-        }
-      }
-
-      getParams();
-
-      // Gestion marker found/lost
-      document.querySelector('a-scene').addEventListener('loaded', function() {
-        const marker = document.getElementById('fenetreMarker');
-        
-        if (!marker) return;
-
-        marker.addEventListener('markerFound', function() {
-          vid.play();
-        });
-
-        marker.addEventListener('markerLost', function() {
-          vid.pause();
-        });
+      const vid = document.getElementById('vid');
+      
+      // Forcer le play dès que la vidéo peut jouer
+      vid.addEventListener('canplay', function() {
+        vid.play();
       });
-
-      // Adapter le ratio selon la vidéo
-      vid.addEventListener("loadedmetadata", () => {
-        const vw = vid.videoWidth;
-        const vh = vid.videoHeight;
-        if (!vw || !vh) return;
-        const aspect = vh / vw;
-        const targetWidth = 0.9;
-        const targetHeight = targetWidth * aspect;
-
-        const videoEl = document.getElementById("videoPlane");
-        if (videoEl) {
-          videoEl.setAttribute("width", targetWidth);
-          videoEl.setAttribute("height", targetHeight);
-        }
-      });
-
-      // Lancer en muet dès que possible
-      vid.addEventListener("canplay", () => {
-        vid.muted = true;
-        vid.play().catch(err => console.log("autoplay err:", err));
-      });
-
-      // Bouton son
-      btn.addEventListener("click", () => {
-        vid.muted = false;
-        vid.play().catch(err => console.log("play err:", err));
-        btn.style.display = "none";
-      });
-
-      // Likes locaux
-      let localLikes = 0;
-      let liked = false;
-
-      likeBtn.addEventListener("click", () => {
-        liked = !liked;
-        if (liked) {
-          localLikes += 1;
-          likeBtn.textContent = "❤";
-        } else {
-          localLikes = Math.max(0, localLikes - 1);
-          likeBtn.textContent = "♡";
-        }
-        likesEl.textContent = localLikes.toString();
-      });
-
-      viewsEl.textContent = "1 vue";
     </script>
   </body>
 </html>
