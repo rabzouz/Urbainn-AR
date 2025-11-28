@@ -119,12 +119,12 @@
       <!-- Marker "fenetre" (fichier dans public/markers/fenetre.patt) -->
       <a-marker
   type="pattern"
-  url="markers/fenetre.patt"
-  id="fenetreMarker"
+  url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/examples/marker-training/examples/pattern-files/pattern-hiro.patt"
+  id="hiroMarker"
 >
-  <!-- TEST : cube jaune simple -->
-  <a-box position="0 0.5 0" material="color: yellow;"></a-box>
+  <a-box position="0 0.5 0" material="color: red;"></a-box>
 </a-marker>
+>
 
         <!-- Panneau vidéo collé sur le marker -->
         <a-entity
@@ -149,7 +149,7 @@
       const likeBtn   = document.getElementById("likeBtn");
       const titleEl   = document.getElementById("video-title");
       const sceneEl   = document.querySelector("a-scene");
-      const markerEl  = document.getElementById("fenetreMarker");
+      const markerEl  = document.getElementById("hiroMarker");
       const mainPanel = document.getElementById("mainPanel");
 
       let videoUrl = null;
