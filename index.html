@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <title>UrbainAR WebAR</title>
 
-    <!-- Versions qui fonctionnent sur ton téléphone -->
     <script src="https://aframe.io/releases/0.8.0/aframe.min.js"></script>
     <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.6.0/aframe/build/aframe-ar.js"></script>
 
@@ -101,26 +100,25 @@
         ></video>
       </a-assets>
 
-      <!-- Marker fenetre (si tu as le .patt dans public/markers/) -->
       <a-marker
         type="pattern"
         url="markers/fenetre.patt"
         id="fenetreMarker"
       >
-        <a-plane
+        <a-video
           id="videoPlane"
+          src="#video-texture"
           position="0 0 0"
           rotation="-90 0 0"
           width="0.9"
           height="1.6"
-          material="shader: flat; src: #video-texture"
-        ></a-plane>
+        ></a-video>
       </a-marker>
 
       <a-entity camera></a-entity>
     </a-scene>
 
-        <script>
+    <script>
       const vid = document.getElementById("video-texture");
       const btn = document.getElementById("playWithSound");
       const info = document.getElementById("info");
@@ -160,25 +158,12 @@
 
       getParams();
 
-      // FORCER LA TEXTURE VIDÉO SUR LE PLAN
+      // Gestion marker found/lost
       document.querySelector('a-scene').addEventListener('loaded', function() {
-        const plane = document.getElementById('videoPlane');
         const marker = document.getElementById('fenetreMarker');
         
-        if (!plane || !vid.src) return;
+        if (!marker) return;
 
-        // Attendre que la vidéo soit prête
-        vid.addEventListener('loadeddata', function() {
-          // Forcer l'update de la texture Three.js
-          setTimeout(() => {
-            const mesh = plane.getObject3D('mesh');
-            if (mesh && mesh.material && mesh.material.map) {
-              mesh.material.map.needsUpdate = true;
-            }
-          }, 500);
-        });
-
-        // Play/pause selon la visibilité du marker
         marker.addEventListener('markerFound', function() {
           vid.play();
         });
@@ -188,7 +173,7 @@
         });
       });
 
-      // Adapter le ratio du plan selon la vidéo
+      // Adapter le ratio selon la vidéo
       vid.addEventListener("loadedmetadata", () => {
         const vw = vid.videoWidth;
         const vh = vid.videoHeight;
@@ -197,20 +182,20 @@
         const targetWidth = 0.9;
         const targetHeight = targetWidth * aspect;
 
-        const plane = document.getElementById("videoPlane");
-        if (plane) {
-          plane.setAttribute("width", targetWidth);
-          plane.setAttribute("height", targetHeight);
+        const videoEl = document.getElementById("videoPlane");
+        if (videoEl) {
+          videoEl.setAttribute("width", targetWidth);
+          videoEl.setAttribute("height", targetHeight);
         }
       });
 
-      // Lancer la vidéo en muet dès que possible
+      // Lancer en muet dès que possible
       vid.addEventListener("canplay", () => {
         vid.muted = true;
         vid.play().catch(err => console.log("autoplay err:", err));
       });
 
-      // Bouton pour activer le son
+      // Bouton son
       btn.addEventListener("click", () => {
         vid.muted = false;
         vid.play().catch(err => console.log("play err:", err));
@@ -233,6 +218,7 @@
         likesEl.textContent = localLikes.toString();
       });
 
-      // Démo: 1 vue
       viewsEl.textContent = "1 vue";
     </script>
+  </body>
+</html>
