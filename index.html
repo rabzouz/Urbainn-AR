@@ -120,7 +120,7 @@
       <a-entity camera></a-entity>
     </a-scene>
 
-    <script>
+        <script>
       const vid = document.getElementById("video-texture");
       const btn = document.getElementById("playWithSound");
       const info = document.getElementById("info");
@@ -159,6 +159,34 @@
       }
 
       getParams();
+
+      // FORCER LA TEXTURE VIDÉO SUR LE PLAN
+      document.querySelector('a-scene').addEventListener('loaded', function() {
+        const plane = document.getElementById('videoPlane');
+        const marker = document.getElementById('fenetreMarker');
+        
+        if (!plane || !vid.src) return;
+
+        // Attendre que la vidéo soit prête
+        vid.addEventListener('loadeddata', function() {
+          // Forcer l'update de la texture Three.js
+          setTimeout(() => {
+            const mesh = plane.getObject3D('mesh');
+            if (mesh && mesh.material && mesh.material.map) {
+              mesh.material.map.needsUpdate = true;
+            }
+          }, 500);
+        });
+
+        // Play/pause selon la visibilité du marker
+        marker.addEventListener('markerFound', function() {
+          vid.play();
+        });
+
+        marker.addEventListener('markerLost', function() {
+          vid.pause();
+        });
+      });
 
       // Adapter le ratio du plan selon la vidéo
       vid.addEventListener("loadedmetadata", () => {
@@ -208,6 +236,3 @@
       // Démo: 1 vue
       viewsEl.textContent = "1 vue";
     </script>
-  </body>
-</html>
-
