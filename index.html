@@ -116,15 +116,12 @@
         ></video>
       </a-assets>
 
-      <!-- Marker "fenetre" -->
+      <!-- Marker "fenetre" (fichier dans public/markers/fenetre.patt) -->
       <a-marker
-  type="pattern"
-  url="markers/fenetre.patt"
-  id="fenetreMarker"
->
-  <a-box position="0 0.5 0" material="color: yellow;"></a-box>
-</a-marker>
-
+        type="pattern"
+        url="markers/fenetre.patt"
+        id="fenetreMarker"
+      >
         <!-- Panneau vidéo collé sur le marker -->
         <a-entity
           id="mainPanel"
@@ -165,8 +162,14 @@
           const clusterParam = params.get("cluster");
 
           if (videoParam) {
-            videoUrl   = decodeURIComponent(videoParam);
-            vid.src    = videoUrl;
+            videoUrl = decodeURIComponent(videoParam);
+            vid.src = videoUrl;
+
+            // forcer les bons attributs pour mobile
+            vid.setAttribute("playsinline", "");
+            vid.setAttribute("webkit-playsinline", "");
+            vid.setAttribute("autoplay", "");
+
             info.textContent = "Vidéo chargée. Autorise la caméra, puis appuie sur Activer le son.";
           } else {
             info.textContent = "Paramètre ?video= manquant dans l'URL.";
@@ -205,7 +208,7 @@
         return videoEl;
       }
 
-      // panneaux du cluster: ratio 9:16
+      // Panneaux du cluster: ratio 9:16
       function createVideoPanel(videoId, index, total) {
         const radius = 4;
         const yPos   = 1.6;
@@ -266,14 +269,16 @@
         // Panneaux du cluster autour de la caméra
         setupClusterPanels();
 
-        // vidéo principale en muet
-        vid.muted = true;
-        vid.play().then(() => {
-          const mesh = mainPanel.getObject3D("mesh");
-          if (mesh && mesh.material && mesh.material.map) {
-            mesh.material.map.needsUpdate = true;
-          }
-        }).catch(err => console.log("autoplay error:", err));
+        // Attendre que la vidéo soit prête pour forcer la texture
+        vid.addEventListener("canplay", () => {
+          vid.muted = true;
+          vid.play().then(() => {
+            const mesh = mainPanel.getObject3D("mesh");
+            if (mesh && mesh.material && mesh.material.map) {
+              mesh.material.map.needsUpdate = true;
+            }
+          }).catch(err => console.log("autoplay error:", err));
+        });
 
         viewsEl.textContent = "1 vue";
       });
