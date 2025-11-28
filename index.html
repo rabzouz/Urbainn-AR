@@ -6,7 +6,6 @@
 
     <script src="https://aframe.io/releases/0.8.0/aframe.min.js"></script>
     <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.6.0/aframe/build/aframe-ar.js"></script>
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -92,18 +91,16 @@
     <button id="playWithSound">🔊 Activer le son</button>
 
     <a-scene id="scene" embedded arjs>
-      <a-assets id="assets">
-        <!-- Les vidéos seront ajoutées dynamiquement ici -->
-      </a-assets>
+      <a-assets id="assets"></a-assets>
 
-      <a-marker preset="hiro" id="hiroMarker">
-        <!-- Les panneaux vidéo seront ajoutés dynamiquement ici -->
-      </a-marker>
+      <a-marker preset="hiro" id="hiroMarker"></a-marker>
 
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
+      const { createClient } = supabase;
+
       const info = document.getElementById('info');
       const btn = document.getElementById('playWithSound');
       const likeBtn = document.getElementById('likeBtn');
@@ -112,9 +109,9 @@
       const viewsEl = document.getElementById('video-views');
 
       const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
-      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA0ODM1NjQsImV4cCI6MjA0NjA1OTU2NH0.V9H3Jmr-8EqeZJqh3q8OcBMhUzHwHLfzqxXnRHt-KE0'; // Remplace par ta vraie clé
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
 
-      const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       let videos = [];
       let videoElements = [];
@@ -124,12 +121,11 @@
         try {
           info.textContent = 'Chargement des vidéos...';
           
-          // Récupère toutes les vidéos depuis Supabase
-          const { data, error } = await supabase
-            .from('videos') // Nom de ta table
+          const { data, error } = await supabaseClient
+            .from('videos')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(10); // Limite à 10 vidéos pour pas surcharger
+            .limit(10);
 
           if (error) throw error;
 
@@ -137,25 +133,24 @@
           info.textContent = `${videos.length} vidéo(s) chargée(s). Vise le marker Hiro.`;
 
           if (videos.length === 0) {
-            info.textContent = 'Aucune vidéo trouvée.';
+            info.textContent = 'Aucune vidéo trouvée. Utilise l\'app pour poster une vidéo !';
             return;
           }
 
           createVideoPlanes();
         } catch (err) {
-          console.error('Erreur chargement vidéos:', err);
-          info.textContent = 'Erreur chargement vidéos: ' + err.message;
+          console.error('Erreur:', err);
+          info.textContent = 'Erreur: ' + err.message;
         }
       }
 
       function createVideoPlanes() {
         const assets = document.getElementById('assets');
         const marker = document.getElementById('hiroMarker');
-        const radius = 2; // Distance autour du marker
+        const radius = 2;
         const angleStep = (2 * Math.PI) / videos.length;
 
         videos.forEach((video, index) => {
-          // Créer l'élément vidéo HTML
           const videoEl = document.createElement('video');
           videoEl.id = `vid-${video.id}`;
           videoEl.src = video.video_url;
@@ -167,23 +162,18 @@
           assets.appendChild(videoEl);
           videoElements.push(videoEl);
 
-          // Position en cercle autour du marker
           const angle = index * angleStep;
           const x = radius * Math.cos(angle);
           const z = -radius * Math.sin(angle);
 
-          // Créer le plan AR
           const plane = document.createElement('a-video');
           plane.setAttribute('src', `#vid-${video.id}`);
           plane.setAttribute('position', `${x} 0 ${z}`);
           plane.setAttribute('rotation', '-90 0 0');
           plane.setAttribute('width', '0.6');
           plane.setAttribute('height', '1.1');
-          plane.setAttribute('class', 'video-plane');
-          plane.setAttribute('data-video-id', video.id);
           plane.setAttribute('data-video-index', index);
 
-          // Click pour activer cette vidéo
           plane.addEventListener('click', () => {
             currentVideoIndex = index;
             updateUI(video);
@@ -193,7 +183,6 @@
           marker.appendChild(plane);
         });
 
-        // Auto-play la première vidéo
         if (videoElements.length > 0) {
           videoElements[0].play().catch(e => console.log('autoplay:', e));
           updateUI(videos[0]);
@@ -207,7 +196,6 @@
       }
 
       function playVideo(videoEl) {
-        // Pause toutes les autres
         videoElements.forEach(v => {
           if (v !== videoEl) v.pause();
         });
@@ -223,7 +211,6 @@
         info.textContent = 'Son activé !';
       });
 
-      // Likes locaux
       let localLikes = 0;
       let liked = false;
 
@@ -237,10 +224,8 @@
           likeBtn.textContent = '♡';
         }
         likesEl.textContent = localLikes.toString();
-        // TODO: sauvegarder le like dans Supabase
       });
 
-      // Charger les vidéos au démarrage
       document.getElementById('scene').addEventListener('loaded', () => {
         loadVideos();
       });
