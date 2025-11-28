@@ -166,18 +166,18 @@
           const clusterParam = params.get("cluster");
 
           if (videoParam) {
-            videoUrl = decodeURIComponent(videoParam);
-            vid.src = videoUrl;
+  videoUrl = decodeURIComponent(videoParam);
+  vid.src = videoUrl;
 
-            // forcer les bons attributs pour mobile
-            vid.setAttribute("playsinline", "");
-            vid.setAttribute("webkit-playsinline", "");
-            vid.setAttribute("autoplay", "");
+  vid.setAttribute("playsinline", "");
+  vid.setAttribute("webkit-playsinline", "");
+  vid.setAttribute("autoplay", "");
 
-            info.textContent = "Vidéo chargée. Autorise la caméra, puis appuie sur Activer le son.";
-          } else {
-            info.textContent = "Paramètre ?video= manquant dans l'URL.";
-          }
+  info.textContent = "Vidéo chargée. Autorise la caméra, puis appuie sur Activer le son.";
+} else {
+  // Pour le test Hiro, on ne force pas la vidéo
+  info.textContent = "Test marker Hiro : vise le marker avec la caméra.";
+}
 
           if (titleParam) {
             titleEl.textContent = decodeURIComponent(titleParam);
