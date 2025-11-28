@@ -118,10 +118,14 @@
 
       <!-- Marker "fenetre" (fichier dans public/markers/fenetre.patt) -->
       <a-marker
-        type="pattern"
-        url="markers/fenetre.patt"
-        id="fenetreMarker"
-      >
+  type="pattern"
+  url="markers/fenetre.patt"
+  id="fenetreMarker"
+>
+  <!-- TEST : cube jaune simple -->
+  <a-box position="0 0.5 0" material="color: yellow;"></a-box>
+</a-marker>
+
         <!-- Panneau vidéo collé sur le marker -->
         <a-entity
           id="mainPanel"
