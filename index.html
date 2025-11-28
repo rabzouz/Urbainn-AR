@@ -73,7 +73,7 @@
   </head>
 
   <body style='margin: 0; overflow: hidden;'>
-    <div id="info">Vise le marker fenetre</div>
+    <div id="info">Vise le marker UrbainAR</div>
 
     <div id="video-ui">
       <div>
@@ -102,13 +102,11 @@
         ></video>
       </a-assets>
 
-      <!-- TON MARKER FENETRE -->
       <a-marker
-  type="pattern"
-  url="public/markers/urbainar.patt"
-  id="urbainMarker"
->
-
+        type="pattern"
+        url="public/markers/urbainar.patt"
+        id="urbainMarker"
+      >
         <a-video
           src="#vid"
           position="0 0 0"
@@ -139,7 +137,6 @@
         info.textContent = 'Son activé !';
       });
 
-      // Likes locaux
       let localLikes = 0;
       let liked = false;
 
