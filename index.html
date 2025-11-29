@@ -22,6 +22,7 @@
         font-size: 12px;
         font-family: sans-serif;
         border-radius: 4px;
+        max-width: 80%;
       }
 
       #soundBtn {
@@ -39,17 +40,47 @@
         font-weight: bold;
         cursor: pointer;
       }
+
+      #navBtns {
+        position: fixed;
+        z-index: 10;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+      }
+
+      .navBtn {
+        padding: 10px 20px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 18px;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
-    <div id="info">Chargement... Vise le marker Hiro</div>
+    <div id="info">Chargement... Vise le marker Hiro avec bonne lumière</div>
     <button id="soundBtn">🔊 Activer le son</button>
+    
+    <div id="navBtns">
+      <button class="navBtn" id="prevBtn">◀</button>
+      <button class="navBtn" id="nextBtn">▶</button>
+    </div>
 
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+    <a-scene 
+      embedded 
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; maxDetectionRate: 60; canvasWidth: 640; canvasHeight: 480;"
+      vr-mode-ui="enabled: false"
+    >
       <a-assets id="assets"></a-assets>
 
-      <a-marker preset="hiro" id="marker">
-        <!-- Les vidéos seront ajoutées ici -->
+      <a-marker preset="hiro" id="marker" smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
+        <!-- Container unique pour une seule vidéo à la fois -->
+        <a-entity id="videoContainer" position="0 0.5 0"></a-entity>
       </a-marker>
 
       <a-entity camera></a-entity>
@@ -58,9 +89,11 @@
     <script>
       const info = document.getElementById('info');
       const soundBtn = document.getElementById('soundBtn');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
       const sceneEl = document.querySelector('a-scene');
       const assetsEl = document.getElementById('assets');
-      const markerEl = document.getElementById('marker');
+      const containerEl = document.getElementById('videoContainer');
 
       const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
       const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
@@ -68,7 +101,7 @@
       const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
       let videos = [];
-      let videoElements = [];
+      let currentIndex = 0;
 
       async function loadVideos() {
         try {
@@ -78,126 +111,150 @@
             .from('videos')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(5);
+            .limit(10);
 
           if (error) throw error;
 
           videos = data || [];
-          info.textContent = `${videos.length} vidéo(s). Vise Hiro et clique sur une vidéo.`;
-
+          
           if (videos.length === 0) {
             info.textContent = 'Aucune vidéo dans la base.';
             return;
           }
 
-          createVideoPanels();
+          // Créer toutes les vidéos HTML
+          videos.forEach((video, index) => {
+            const videoId = `vid-${video.id}`;
+            
+            const videoEl = document.createElement('video');
+            videoEl.id = videoId;
+            videoEl.src = video.video_url;
+            videoEl.loop = true;
+            videoEl.muted = true;
+            videoEl.setAttribute('playsinline', '');
+            videoEl.setAttribute('webkit-playsinline', '');
+            videoEl.setAttribute('crossorigin', 'anonymous');
+            
+            assetsEl.appendChild(videoEl);
+          });
+
+          info.textContent = `${videos.length} vidéo(s) chargées. Vise Hiro avec lumière.`;
+          
+          // Afficher la première
+          showVideo(0);
+
         } catch (err) {
           console.error('Erreur:', err);
           info.textContent = 'Erreur: ' + err.message;
         }
       }
 
-      function createVideoPanels() {
-        const spacing = 1.2;
-        const startX = -(videos.length - 1) * spacing / 2;
+      function showVideo(index) {
+        if (!videos[index]) return;
 
-        videos.forEach((video, index) => {
-          const videoId = `vid-${video.id}`;
-          
-          // Créer vidéo HTML
-          const videoEl = document.createElement('video');
-          videoEl.id = videoId;
-          videoEl.src = video.video_url;
-          videoEl.loop = true;
-          videoEl.muted = true;
-          videoEl.setAttribute('playsinline', '');
-          videoEl.setAttribute('webkit-playsinline', '');
-          videoEl.setAttribute('crossorigin', 'anonymous');
-          
-          videoEl.addEventListener('loadeddata', () => {
-            videoEl.play().catch(e => console.log('autoplay:', e));
-          });
-          
-          assetsEl.appendChild(videoEl);
-          videoElements.push(videoEl);
+        currentIndex = index;
+        const video = videos[index];
+        const videoId = `vid-${video.id}`;
+        const videoEl = document.getElementById(videoId);
 
-          const x = startX + (index * spacing);
+        // Vider le container
+        while (containerEl.firstChild) {
+          containerEl.removeChild(containerEl.firstChild);
+        }
 
-          // Container
-          const container = document.createElement('a-entity');
-          container.setAttribute('position', `${x} 1 0`);
+        // Créer le panneau pour cette vidéo
+        const videoWidth = 0.9;
+        const videoHeight = videoWidth * (16 / 9);
 
-          // Vidéo (ratio 9:16)
-          const videoWidth = 0.6;
-          const videoHeight = videoWidth * (16 / 9);
-
-          const plane = document.createElement('a-plane');
-          plane.setAttribute('width', videoWidth);
-          plane.setAttribute('height', videoHeight);
-          plane.setAttribute('material', `shader: flat; src: #${videoId}`);
-          plane.setAttribute('rotation', '-90 0 0');
-          plane.setAttribute('position', '0 0 0');
-          
-          // Event click pour son
-          plane.addEventListener('click', function() {
-            console.log('Click vidéo:', video.title);
-            videoEl.muted = false;
-            videoEl.play();
-            soundBtn.style.display = 'none';
-          });
-
-          container.appendChild(plane);
-
-          // Logo UrbainAR (texte 3D au-dessus)
-          const logo = document.createElement('a-text');
-          logo.setAttribute('value', 'UrbainAR');
-          logo.setAttribute('align', 'center');
-          logo.setAttribute('width', '2');
-          logo.setAttribute('color', '#00D4FF');
-          logo.setAttribute('position', `0 0.1 ${videoHeight / 2 + 0.2}`);
-          logo.setAttribute('rotation', '-90 0 0');
-          container.appendChild(logo);
-
-          // User
-          const username = document.createElement('a-text');
-          username.setAttribute('value', video.user_id || 'Anonyme');
-          username.setAttribute('align', 'center');
-          username.setAttribute('width', '1.5');
-          username.setAttribute('color', '#FFFFFF');
-          username.setAttribute('position', `0 0.1 ${videoHeight / 2 + 0.1}`);
-          username.setAttribute('rotation', '-90 0 0');
-          container.appendChild(username);
-
-          // Vues (bas gauche)
-          const views = document.createElement('a-text');
-          views.setAttribute('value', `${video.view_count || 0} vues`);
-          views.setAttribute('align', 'left');
-          views.setAttribute('width', '1');
-          views.setAttribute('color', '#FFFFFF');
-          views.setAttribute('position', `${-videoWidth / 2 + 0.05} 0.1 ${-videoHeight / 2 - 0.1}`);
-          views.setAttribute('rotation', '-90 0 0');
-          container.appendChild(views);
-
-          // Likes (bas droite)
-          const likes = document.createElement('a-text');
-          likes.setAttribute('value', `♥ ${video.like_count || 0}`);
-          likes.setAttribute('align', 'right');
-          likes.setAttribute('width', '1');
-          likes.setAttribute('color', '#FF5A7A');
-          likes.setAttribute('position', `${videoWidth / 2 - 0.05} 0.1 ${-videoHeight / 2 - 0.1}`);
-          likes.setAttribute('rotation', '-90 0 0');
-          container.appendChild(likes);
-
-          markerEl.appendChild(container);
+        // Plane vidéo CENTRÉ (position 0 0 0)
+        const plane = document.createElement('a-plane');
+        plane.setAttribute('width', videoWidth);
+        plane.setAttribute('height', videoHeight);
+        plane.setAttribute('material', `shader: flat; src: #${videoId}`);
+        plane.setAttribute('rotation', '-90 0 0');
+        plane.setAttribute('position', '0 0 0');
+        
+        plane.addEventListener('click', function() {
+          videoEl.muted = false;
+          videoEl.play();
+          soundBtn.style.display = 'none';
         });
+
+        containerEl.appendChild(plane);
+
+        // Logo UrbainAR
+        const logo = document.createElement('a-text');
+        logo.setAttribute('value', 'UrbainAR');
+        logo.setAttribute('align', 'center');
+        logo.setAttribute('width', '2.5');
+        logo.setAttribute('color', '#00D4FF');
+        logo.setAttribute('position', `0 0.02 ${videoHeight / 2 + 0.25}`);
+        logo.setAttribute('rotation', '-90 0 0');
+        containerEl.appendChild(logo);
+
+        // Username
+        const username = document.createElement('a-text');
+        username.setAttribute('value', `@${video.user_id || 'anonyme'}`);
+        username.setAttribute('align', 'center');
+        username.setAttribute('width', '1.8');
+        username.setAttribute('color', '#FFFFFF');
+        username.setAttribute('position', `0 0.02 ${videoHeight / 2 + 0.12}`);
+        username.setAttribute('rotation', '-90 0 0');
+        containerEl.appendChild(username);
+
+        // Vues
+        const views = document.createElement('a-text');
+        views.setAttribute('value', `👁 ${video.view_count || 0}`);
+        views.setAttribute('align', 'left');
+        views.setAttribute('width', '1.2');
+        views.setAttribute('color', '#FFFFFF');
+        views.setAttribute('position', `${-videoWidth / 2 + 0.05} 0.02 ${-videoHeight / 2 - 0.12}`);
+        views.setAttribute('rotation', '-90 0 0');
+        containerEl.appendChild(views);
+
+        // Likes
+        const likes = document.createElement('a-text');
+        likes.setAttribute('value', `❤ ${video.like_count || 0}`);
+        likes.setAttribute('align', 'right');
+        likes.setAttribute('width', '1.2');
+        likes.setAttribute('color', '#FF5A7A');
+        likes.setAttribute('position', `${videoWidth / 2 - 0.05} 0.02 ${-videoHeight / 2 - 0.12}`);
+        likes.setAttribute('rotation', '-90 0 0');
+        containerEl.appendChild(likes);
+
+        // Titre
+        const title = document.createElement('a-text');
+        title.setAttribute('value', video.title || 'Sans titre');
+        title.setAttribute('align', 'center');
+        title.setAttribute('width', '1.5');
+        title.setAttribute('color', '#FFFFFF');
+        title.setAttribute('position', `0 0.02 ${-videoHeight / 2 - 0.25}`);
+        title.setAttribute('rotation', '-90 0 0');
+        containerEl.appendChild(title);
+
+        // Play la vidéo
+        videoEl.play().catch(e => console.log('autoplay:', e));
+
+        info.textContent = `Vidéo ${index + 1}/${videos.length}: ${video.title || 'Sans titre'}`;
       }
 
-      // Bouton global pour tout activer
+      // Navigation
+      prevBtn.addEventListener('click', () => {
+        const newIndex = (currentIndex - 1 + videos.length) % videos.length;
+        showVideo(newIndex);
+      });
+
+      nextBtn.addEventListener('click', () => {
+        const newIndex = (currentIndex + 1) % videos.length;
+        showVideo(newIndex);
+      });
+
+      // Son global
       soundBtn.addEventListener('click', () => {
-        videoElements.forEach(v => {
-          v.muted = false;
-          v.play();
-        });
+        const currentVideoId = `vid-${videos[currentIndex].id}`;
+        const videoEl = document.getElementById(currentVideoId);
+        videoEl.muted = false;
+        videoEl.play();
         soundBtn.style.display = 'none';
       });
 
