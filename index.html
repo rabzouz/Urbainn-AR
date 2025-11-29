@@ -1,215 +1,208 @@
 <!DOCTYPE html>
-<html lang="fr">
-  <head>
-    <meta charset="utf-8" />
-    <title>UrbainAR WebAR</title>
+<html>
+<head>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  
+  <style>
+    body { margin: 0; overflow: hidden; }
+  </style>
+</head>
+<body>
 
-    <script src="https://aframe.io/releases/0.8.0/aframe.min.js"></script>
-    <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.6.0/aframe/build/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+<a-scene embedded arjs='sourceType: webcam; debugUIEnabled: false;'>
+  
+  <a-assets>
+    <video id="video" preload="auto" loop="true" crossorigin="anonymous"></video>
+  </a-assets>
 
-    <style>
-      body, html { margin: 0; overflow: hidden; }
-
-      #soundBtn {
-        position: fixed; z-index: 10; bottom: 20px; left: 50%;
-        transform: translateX(-50%); padding: 12px 24px;
-        background: rgba(0, 0, 0, 0.8); color: white;
-        border: none; border-radius: 8px; font-size: 16px;
-        font-weight: bold; cursor: pointer;
-      }
-
-      #navBtns {
-        position: fixed; z-index: 10; bottom: 80px; left: 50%;
-        transform: translateX(-50%); display: flex; gap: 10px;
-      }
-
-      .navBtn {
-        padding: 10px 20px; background: rgba(0, 0, 0, 0.7);
-        color: white; border: none; border-radius: 6px;
-        font-size: 18px; cursor: pointer;
-      }
-
-      #videoCounter {
-        position: fixed; z-index: 10; top: 10px; right: 10px;
-        padding: 8px 16px; background: rgba(0, 0, 0, 0.7);
-        color: white; font-size: 14px; font-family: sans-serif;
-        border-radius: 20px; font-weight: 600;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="videoCounter">1/1</div>
-    <button id="soundBtn">🔊 Activer le son</button>
+  <a-marker preset='hiro'>
     
-    <div id="navBtns">
-      <button class="navBtn" id="prevBtn">◀</button>
-      <button class="navBtn" id="nextBtn">▶</button>
-    </div>
+    <!-- Cadre néon extérieur cyan -->
+    <a-ring 
+      position="0 0 -0.01" 
+      radius-inner="1.8" 
+      radius-outer="2" 
+      color="#00ffff"
+      material="shader: flat; emissive: #00ffff; emissiveIntensity: 2; side: double"
+      animation="property: rotation; to: 0 0 360; loop: true; dur: 4000; easing: linear">
+    </a-ring>
 
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-      <a-assets id="assets"></a-assets>
-      <a-marker preset="hiro" id="marker" smooth="true" smoothCount="5">
-        <a-entity id="container" position="0 0.5 0"></a-entity>
-      </a-marker>
-      <a-entity camera></a-entity>
-    </a-scene>
+    <!-- Cadre néon intérieur magenta -->
+    <a-ring 
+      position="0 0 -0.02" 
+      radius-inner="2" 
+      radius-outer="2.1" 
+      color="#ff00ff"
+      material="shader: flat; emissive: #ff00ff; emissiveIntensity: 1.5; side: double"
+      animation="property: rotation; to: 0 0 -360; loop: true; dur: 6000; easing: linear">
+    </a-ring>
 
-    <script>
-      const soundBtn = document.getElementById('soundBtn');
-      const prevBtn = document.getElementById('prevBtn');
-      const nextBtn = document.getElementById('nextBtn');
-      const counter = document.getElementById('videoCounter');
-      const container = document.getElementById('container');
-      const assets = document.getElementById('assets');
+    <!-- Vidéo centrale -->
+    <a-video 
+      id="ar-video"
+      src="#video" 
+      width="3.2" 
+      height="1.8" 
+      position="0 0 0">
+    </a-video>
 
-      const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
-      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
+    <!-- Panneau d'informations avec fond semi-transparent -->
+    <a-plane 
+      position="0 -1.2 0" 
+      width="3.5" 
+      height="0.6" 
+      color="#000000"
+      material="opacity: 0.85; transparent: true"
+      animation="property: material.emissive; from: #000000; to: #0a0a0a; loop: true; dur: 1500; dir: alternate">
+      
+      <!-- Nom d'utilisateur (dynamique) -->
+      <a-text 
+        id="username-text"
+        value="@chargement..." 
+        position="-1.6 0.15 0.01" 
+        width="2.5"
+        color="#00ffff"
+        font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+        shader="msdf">
+      </a-text>
 
-      const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      <!-- Date et heure (dynamique) -->
+      <a-text 
+        id="date-text"
+        value="Chargement..." 
+        position="-1.6 -0.05 0.01" 
+        width="2"
+        color="#ffffff"
+        font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+        shader="msdf">
+      </a-text>
 
-      let videos = [];
-      let currentIndex = 0;
-      let soundEnabled = false; // Variable pour savoir si le son est activé
+      <!-- Compteur de vues -->
+      <a-text 
+        id="views-text"
+        value="👁️ 0" 
+        position="0.5 0.15 0.01" 
+        width="1.8"
+        color="#00ff00"
+        font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+        shader="msdf">
+      </a-text>
 
-      async function load() {
-        try {
-          const { data, error } = await supabaseClient
-            .from('videos')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(20);
+      <!-- Compteur de likes avec animation -->
+      <a-text 
+        id="likes-text"
+        value="❤️ 0" 
+        position="0.5 -0.05 0.01" 
+        width="1.8"
+        color="#ff00ff"
+        font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+        shader="msdf"
+        animation="property: scale; to: 1.15 1.15 1.15; loop: true; dur: 1000; dir: alternate; easing: easeInOutQuad">
+      </a-text>
 
-          if (error) throw error;
+    </a-plane>
 
-          videos = data || [];
-          
-          if (videos.length === 0) {
-            counter.textContent = 'Aucune vidéo';
-            return;
-          }
+    <!-- Particules lumineuses flottantes gauche -->
+    <a-sphere 
+      position="2.2 1 0" 
+      radius="0.08" 
+      color="#00ffff"
+      material="emissive: #00ffff; emissiveIntensity: 3; shader: flat"
+      animation="property: position; to: 2.2 -1 0; loop: true; dur: 2000; dir: alternate; easing: easeInOutQuad">
+    </a-sphere>
 
-          videos.forEach((video, index) => {
-            const videoId = `vid-${index}`;
-            
-            const videoEl = document.createElement('video');
-            videoEl.id = videoId;
-            videoEl.src = video.video_url;
-            videoEl.loop = true;
-            videoEl.muted = true; // Toujours mute par défaut
-            videoEl.setAttribute('playsinline', '');
-            videoEl.setAttribute('webkit-playsinline', '');
-            videoEl.setAttribute('crossorigin', 'anonymous');
-            
-            assets.appendChild(videoEl);
-          });
+    <!-- Particules lumineuses flottantes droite -->
+    <a-sphere 
+      position="-2.2 0.5 0" 
+      radius="0.08" 
+      color="#ff00ff"
+      material="emissive: #ff00ff; emissiveIntensity: 3; shader: flat"
+      animation="property: position; to: -2.2 -0.5 0; loop: true; dur: 1500; dir: alternate; easing: easeInOutQuad">
+    </a-sphere>
 
-          showVideo(0);
+    <!-- Logo torique flottant au-dessus -->
+    <a-torus 
+      position="0 1.5 0" 
+      radius="0.4" 
+      radius-tubular="0.05"
+      color="#00ffff"
+      material="emissive: #00ffff; emissiveIntensity: 2.5; shader: flat"
+      animation__rotate="property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear"
+      animation__float="property: position; to: 0 1.8 0; loop: true; dur: 2000; dir: alternate; easing: easeInOutSine">
+    </a-torus>
 
-        } catch (e) {
-          console.error('Erreur:', e);
-          counter.textContent = 'Erreur';
+  </a-marker>
+
+  <a-entity camera></a-entity>
+
+</a-scene>
+
+<script>
+  const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
+
+  // Fonction pour récupérer les données d'une vidéo depuis Supabase
+  async function loadVideoData(videoId = 1) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/videos?id=eq.${videoId}`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
         }
-      }
-
-      function showVideo(index) {
-        if (!videos[index]) return;
-
-        // MUTE toutes les autres vidéos
-        videos.forEach((v, i) => {
-          const videoEl = document.getElementById(`vid-${i}`);
-          if (i !== index && videoEl) {
-            videoEl.muted = true;
-            videoEl.pause();
-          }
-        });
-
-        currentIndex = index;
-        const video = videos[index];
-        const videoId = `vid-${index}`;
-        const videoEl = document.getElementById(videoId);
-
-        while (container.firstChild) {
-          container.removeChild(container.firstChild);
-        }
-
-        const videoWidth = 0.9;
-        const videoHeight = videoWidth * (16 / 9);
-
-        const plane = document.createElement('a-plane');
-        plane.setAttribute('width', videoWidth);
-        plane.setAttribute('height', videoHeight);
-        plane.setAttribute('material', `shader: flat; src: #${videoId}`);
-        plane.setAttribute('rotation', '-90 0 0');
-        plane.setAttribute('position', '0 0 0');
+      });
+      
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const video = data[0];
         
-        plane.addEventListener('click', function() {
-          soundEnabled = true;
-          videoEl.muted = false;
-          videoEl.play();
-          soundBtn.style.display = 'none';
+        // Mettre à jour la vidéo
+        const videoElement = document.querySelector('#video');
+        videoElement.src = video.video_url;
+        videoElement.load();
+        videoElement.play();
+        
+        // Mettre à jour le nom d'utilisateur
+        document.querySelector('#username-text').setAttribute('value', `@${video.user_id}`);
+        
+        // Formater et afficher la date
+        const date = new Date(video.created_at);
+        const formattedDate = date.toLocaleString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
         });
-
-        container.appendChild(plane);
-
-        // Logo UrbainAR
-        const logo = document.createElement('a-text');
-        logo.setAttribute('value', 'UrbainAR');
-        logo.setAttribute('align', 'center');
-        logo.setAttribute('width', '2.5');
-        logo.setAttribute('color', '#00D4FF');
-        logo.setAttribute('position', `0 0.02 ${videoHeight / 2 + 0.25}`);
-        logo.setAttribute('rotation', '-90 0 0');
-        container.appendChild(logo);
-
-        // Titre
-        const title = document.createElement('a-text');
-        title.setAttribute('value', video.title || 'Sans titre');
-        title.setAttribute('align', 'center');
-        title.setAttribute('width', '1.8');
-        title.setAttribute('color', '#FFFF00');
-        title.setAttribute('position', `0 0.02 ${videoHeight / 2 + 0.1}`);
-        title.setAttribute('rotation', '-90 0 0');
-        container.appendChild(title);
-
-        // Stats
-        const stats = document.createElement('a-text');
-        stats.setAttribute('value', `👁 ${video.view_count || 0}  ❤ ${video.like_count || 0}`);
-        stats.setAttribute('align', 'center');
-        stats.setAttribute('width', '1.3');
-        stats.setAttribute('color', '#FFFFFF');
-        stats.setAttribute('position', `0 0.02 ${-videoHeight / 2 - 0.15}`);
-        stats.setAttribute('rotation', '-90 0 0');
-        container.appendChild(stats);
-
-        // Si le son était activé, le garder pour la nouvelle vidéo
-        videoEl.muted = !soundEnabled;
-        videoEl.currentTime = 0;
-        videoEl.play().catch(e => console.log('autoplay:', e));
-
-        counter.textContent = `${index + 1}/${videos.length}`;
+        document.querySelector('#date-text').setAttribute('value', formattedDate);
+        
+        // Mettre à jour les compteurs
+        document.querySelector('#views-text').setAttribute('value', `👁️ ${video.view_count}`);
+        document.querySelector('#likes-text').setAttribute('value', `❤️ ${video.like_count}`);
+        
+        console.log('✅ Vidéo chargée:', video.title);
       }
+    } catch (error) {
+      console.error('❌ Erreur chargement vidéo:', error);
+      document.querySelector('#username-text').setAttribute('value', '@erreur');
+      document.querySelector('#date-text').setAttribute('value', 'Erreur de connexion');
+    }
+  }
 
-      prevBtn.addEventListener('click', () => {
-        const newIndex = (currentIndex - 1 + videos.length) % videos.length;
-        showVideo(newIndex);
-      });
+  // Charger les données au démarrage de la scène
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      loadVideoData(1); // Charger la première vidéo (ID = 1)
+    }, 1000);
+  });
 
-      nextBtn.addEventListener('click', () => {
-        const newIndex = (currentIndex + 1) % videos.length;
-        showVideo(newIndex);
-      });
+  // Optionnel: recharger les données toutes les 10 secondes
+  setInterval(() => {
+    loadVideoData(1);
+  }, 10000);
+</script>
 
-      soundBtn.addEventListener('click', () => {
-        soundEnabled = true;
-        const videoId = `vid-${currentIndex}`;
-        const videoEl = document.getElementById(videoId);
-        videoEl.muted = false;
-        videoEl.play();
-        soundBtn.style.display = 'none';
-      });
-
-      document.querySelector('a-scene').addEventListener('loaded', load);
-    </script>
-  </body>
+</body>
 </html>
