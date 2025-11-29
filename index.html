@@ -3,69 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>UrbainAR Debug</title>
+  <title>UrbainAR - Simple</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   
   <style>
-    body { 
-      margin: 0; 
-      overflow: hidden; 
-    }
-    
-    /* Bouton bien visible au-dessus de tout */
-    #start-button {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 15px 30px;
-      font-size: 18px;
-      background: #00ffff;
-      color: black;
-      border: 3px solid #ff00ff;
-      border-radius: 10px;
-      cursor: pointer;
-      z-index: 99999;
-      font-weight: bold;
-      pointer-events: auto;
-    }
-    
-    /* Zone de debug */
-    #debug-info {
-      position: fixed;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 10px;
-      font-size: 12px;
-      z-index: 99999;
-      max-width: 300px;
-      pointer-events: none;
-    }
-    
-    a-scene {
-      pointer-events: none;
-    }
+    body { margin: 0; overflow: hidden; }
   </style>
 </head>
 <body>
 
-<!-- Bouton démarrage -->
-<button id="start-button">🚀 CLIQUEZ ICI POUR DÉMARRER</button>
-
-<!-- Zone de debug -->
-<div id="debug-info">
-  <div id="status">Statut: En attente...</div>
-  <div id="video-status">Vidéo: Non chargée</div>
-  <div id="marker-status">Marker: Non détecté</div>
-</div>
-
-<a-scene 
-  embedded 
-  arjs='sourceType: webcam; debugUIEnabled: true;' 
-  vr-mode-ui="enabled: false">
+<a-scene embedded arjs='sourceType: webcam; debugUIEnabled: false;' vr-mode-ui="enabled: false">
   
   <a-assets>
     <video 
@@ -78,11 +26,10 @@
     </video>
   </a-assets>
 
-  <a-marker preset='hiro' id="marker">
+  <a-marker preset='hiro' id="marker" emitevents="true">
     
-    <!-- Vidéo simple sans effets d'abord -->
+    <!-- Juste la vidéo, simple -->
     <a-video 
-      id="ar-video"
       src="#video" 
       width="2" 
       height="1.5" 
@@ -90,14 +37,34 @@
       rotation="-90 0 0">
     </a-video>
     
-    <!-- Texte simple pour vérifier la détection -->
-    <a-text 
-      value="MARKER DETECTE !" 
-      position="0 1.5 0" 
-      color="#00ffff"
-      align="center"
-      width="4">
-    </a-text>
+    <!-- Infos en dessous -->
+    <a-plane 
+      position="0 -0.3 0" 
+      width="2.2" 
+      height="0.4" 
+      color="#000000"
+      material="opacity: 0.7; transparent: true"
+      rotation="-90 0 0">
+      
+      <a-text 
+        id="username-text"
+        value="@user" 
+        position="-1 0.15 0.01" 
+        width="3"
+        color="#ffffff"
+        align="left">
+      </a-text>
+
+      <a-text 
+        id="info-text"
+        value="❤️ 0 | 👁️ 0" 
+        position="-1 -0.05 0.01" 
+        width="3"
+        color="#cccccc"
+        align="left">
+      </a-text>
+
+    </a-plane>
 
   </a-marker>
 
@@ -110,29 +77,12 @@
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
 
   let videoElement = null;
-  let startButton = document.getElementById('start-button');
-  let debugStatus = document.getElementById('status');
-  let videoStatus = document.getElementById('video-status');
-  let markerStatus = document.getElementById('marker-status');
 
-  // Console de debug
-  function log(message) {
-    console.log('🔍', message);
-    debugStatus.textContent = 'Statut: ' + message;
-  }
-
-  // Vérifier que le bouton est visible
-  log('Page chargée, bouton visible');
-
-  // Click sur le bouton
-  startButton.addEventListener('click', async function() {
-    log('Bouton cliqué !');
-    this.style.background = '#ff00ff';
-    this.textContent = '⏳ Chargement...';
+  // Charger la vidéo au démarrage
+  window.addEventListener('load', async function() {
     
     try {
-      // Charger la vidéo depuis Supabase
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/videos?select=*&limit=1`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc&limit=1`, {
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`
@@ -140,76 +90,42 @@
       });
       
       const data = await response.json();
-      log('Données reçues: ' + data.length + ' vidéo(s)');
       
       if (data && data.length > 0) {
         const video = data[0];
-        log('URL vidéo: ' + video.video_url);
         
         // Charger la vidéo
         videoElement = document.querySelector('#video');
         videoElement.src = video.video_url;
-        
-        videoElement.addEventListener('loadeddata', function() {
-          log('Vidéo chargée avec succès !');
-          videoStatus.textContent = 'Vidéo: Prête ✅';
-          startButton.textContent = '✅ MONTREZ LE MARKER HIRO';
-          startButton.style.background = '#00ff00';
-        });
-        
-        videoElement.addEventListener('error', function(e) {
-          log('ERREUR vidéo: ' + e.message);
-          videoStatus.textContent = 'Vidéo: Erreur ❌';
-        });
-        
         videoElement.load();
-      } else {
-        log('Aucune vidéo trouvée dans la base');
-        videoStatus.textContent = 'Vidéo: Aucune trouvée ❌';
+        
+        // Mettre à jour les textes
+        document.querySelector('#username-text').setAttribute('value', `@${video.user_id}`);
+        document.querySelector('#info-text').setAttribute('value', `❤️ ${video.like_count} | 👁️ ${video.view_count}`);
+        
+        console.log('✅ Vidéo chargée');
       }
     } catch (error) {
-      log('ERREUR: ' + error.message);
-      console.error(error);
+      console.error('❌ Erreur:', error);
     }
-  });
-
-  // Détecter le marker
-  window.addEventListener('load', function() {
+    
+    // Détecter le marker
     const marker = document.querySelector('#marker');
     
     marker.addEventListener('markerFound', function() {
-      log('🎯 MARKER DETECTÉ !');
-      markerStatus.textContent = 'Marker: Détecté ✅';
-      markerStatus.style.color = '#00ff00';
-      
-      if (videoElement && videoElement.readyState >= 2) {
-        videoElement.play().then(() => {
-          log('Vidéo en lecture');
-          videoStatus.textContent = 'Vidéo: En lecture ▶️';
-        }).catch(e => {
-          log('Erreur play: ' + e.message);
-        });
-      } else {
-        log('Vidéo pas prête');
+      console.log('🎯 Marker trouvé');
+      if (videoElement) {
+        videoElement.play().catch(e => console.log('Play:', e));
       }
     });
     
     marker.addEventListener('markerLost', function() {
-      log('❌ Marker perdu');
-      markerStatus.textContent = 'Marker: Perdu ❌';
-      markerStatus.style.color = '#ff0000';
-      
+      console.log('❌ Marker perdu');
       if (videoElement) {
         videoElement.pause();
-        videoStatus.textContent = 'Vidéo: Pause ⏸️';
       }
     });
   });
-
-  // Logs de debug console
-  console.log('🚀 UrbainAR Debug Mode');
-  console.log('📹 Supabase URL:', SUPABASE_URL);
-  console.log('✅ Scripts chargés');
 </script>
 
 </body>
