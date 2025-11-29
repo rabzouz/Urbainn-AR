@@ -2,17 +2,32 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <title>UrbainAR - Vidéos</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  
   <style>
-    body { 
-      margin: 0; 
+    body {
+      margin: 0;
       overflow: hidden;
       touch-action: none;
     }
-    
+
+    /* Infos en haut */
+    #video-info {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 10px;
+      z-index: 9999;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    }
+
+    /* Contrôles en bas */
     #video-nav {
       position: fixed;
       bottom: 20px;
@@ -22,139 +37,73 @@
       display: flex;
       gap: 15px;
     }
-    
+
     #video-nav button {
-      width: 60px;
-      height: 60px;
-      font-size: 24px;
+      width: 55px;
+      height: 55px;
+      font-size: 22px;
       background: rgba(0,0,0,0.7);
       color: white;
       border: 2px solid white;
       border-radius: 50%;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: all 0.2s;
     }
-    
+
     #video-nav button:hover {
       background: rgba(255,255,255,0.2);
-      transform: scale(1.1);
+      transform: scale(1.08);
     }
-    
+
     #video-nav button:disabled {
       opacity: 0.3;
       cursor: not-allowed;
-    }
-    
-    #video-info {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 15px 20px;
-      border-radius: 10px;
-      z-index: 9999;
-      font-family: Arial, sans-serif;
-    }
-    
-    #video-info h3 {
-      margin: 0 0 5px 0;
-      font-size: 18px;
-    }
-    
-    #video-info p {
-      margin: 3px 0;
-      font-size: 14px;
-      opacity: 0.8;
-    }
-    
-    #light-warning {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(255, 165, 0, 0.9);
-      color: white;
-      padding: 20px;
-      border-radius: 15px;
-      z-index: 10000;
-      display: none;
-      text-align: center;
-      font-family: Arial, sans-serif;
-      font-size: 16px;
     }
   </style>
 </head>
 <body>
 
+<!-- Infos vidéo -->
 <div id="video-info">
-  <h3 id="video-title">Chargement...</h3>
-  <p id="video-user">@utilisateur</p>
-  <p id="video-count">Vidéo <span id="current">1</span>/<span id="total">0</span></p>
+  <div id="video-title">Chargement...</div>
+  <div>Vidéo <span id="current">1</span>/<span id="total">0</span></div>
 </div>
 
+<!-- Navigation vidéos -->
 <div id="video-nav">
   <button id="btn-prev" onclick="previousVideo()" title="Vidéo précédente">⬅️</button>
   <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF">🔊</button>
   <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante">➡️</button>
 </div>
 
-<!-- Avertissement luminosité -->
-<div id="light-warning">
-  💡 Améliorer l'éclairage pour détecter le marker Hiro
-</div>
+<a-scene
+  embedded
+  arjs="sourceType: webcam; debugUIEnabled: false;"
+  vr-mode-ui="enabled: false">
 
-<a-scene 
-  embedded 
-  arjs='
-    sourceType: webcam; 
-    debugUIEnabled: false; 
-    sourceWidth: 1280; 
-    sourceHeight: 960; 
-    displayWidth: 1280; 
-    displayHeight: 960;
-    detectionMode: mono_and_matrix;
-    matrixCodeType: 3x3;
-    labelingMode: black_region;
-    patternRatio: 0.75;
-  ' 
-  vr-mode-ui="enabled: false"
-  renderer="logarithmicDepthBuffer: true; precision: medium;">
-  
   <a-assets>
-    <video 
-      id="video" 
-      preload="auto" 
-      loop 
+    <video
+      id="video"
+      preload="auto"
+      loop
       crossorigin="anonymous"
-      playsinline 
-      webkit-playsinline
-      volume="1.0">
+      playsinline
+      webkit-playsinline>
     </video>
   </a-assets>
 
-  <a-marker 
-    preset='hiro' 
-    id="marker" 
-    emitevents="true"
-    smooth="true"
-    smoothCount="10"
-    smoothTolerance="0.05"
-    smoothThreshold="3">
-    
-    <!-- Vidéo seule -->
-    <a-video 
-      src="#video" 
-      width="1.1" 
-      height="1.95" 
+  <!-- Marker Hiro avec vidéo verticale centrée -->
+  <a-marker preset="hiro" id="marker" emitevents="true">
+    <a-video
+      src="#video"
+      width="1.1"
+      height="1.95"
       position="0 0 0"
       rotation="-90 0 0">
     </a-video>
-
   </a-marker>
 
-  <a-entity camera near="0.1" far="10000"></a-entity>
-
+  <a-entity camera></a-entity>
 </a-scene>
 
 <script>
@@ -165,80 +114,52 @@
   let currentIndex = 0;
   let videoElement = null;
   let soundEnabled = true;
-  let markerDetected = false;
-  let detectionTimeout = null;
-
-  // Améliorer l'exposition de la caméra pour faible luminosité
-  async function improveExposure() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      const track = stream.getVideoTracks()[0];
-      
-      if (track.getCapabilities && track.applyConstraints) {
-        const capabilities = track.getCapabilities();
-        
-        // Activer l'exposition manuelle si disponible
-        if (capabilities.exposureMode && capabilities.exposureMode.includes('manual')) {
-          await track.applyConstraints({
-            advanced: [{ 
-              exposureMode: 'manual',
-              exposureTime: capabilities.exposureTime ? capabilities.exposureTime.max : undefined
-            }]
-          });
-          console.log('✅ Exposition manuelle activée');
-        } else {
-          // Mode continu pour auto-ajustement
-          await track.applyConstraints({
-            advanced: [{ exposureMode: 'continuous' }]
-          });
-          console.log('✅ Exposition continue activée');
-        }
-      }
-    } catch (error) {
-      console.log('⚠️ Impossible d\'ajuster l\'exposition:', error);
-    }
-  }
 
   async function loadAllVideos() {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc`, {
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc`,
+        {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
         }
-      });
-      
+      );
+
       allVideos = await response.json();
-      console.log(`✅ ${allVideos.length} vidéos chargées`);
-      
+      console.log('✅ vidéos chargées:', allVideos.length);
+
       document.getElementById('total').textContent = allVideos.length;
-      
+
       if (allVideos.length > 0) {
         loadVideo(0);
+      } else {
+        document.getElementById('video-title').textContent = 'Aucune vidéo';
       }
     } catch (error) {
-      console.error('❌ Erreur:', error);
+      console.error('❌ Erreur chargement liste vidéos :', error);
     }
   }
 
   function loadVideo(index) {
     if (index < 0 || index >= allVideos.length) return;
-    
+
     currentIndex = index;
     const video = allVideos[index];
-    
+
     videoElement = document.querySelector('#video');
     videoElement.src = video.video_url;
     videoElement.muted = !soundEnabled;
     videoElement.load();
-    
+
+    // UI
     document.getElementById('video-title').textContent = video.title || 'Vidéo UrbainAR';
-    document.getElementById('video-user').textContent = `@${video.user_id}`;
     document.getElementById('current').textContent = index + 1;
-    
+
     document.getElementById('btn-prev').disabled = index === 0;
     document.getElementById('btn-next').disabled = index === allVideos.length - 1;
-    
+
     console.log(`▶️ Vidéo ${index + 1}/${allVideos.length}`);
   }
 
@@ -264,60 +185,33 @@
     btn.title = soundEnabled ? 'Son ON' : 'Son OFF';
   }
 
-  window.addEventListener('load', async () => {
-    // Améliorer l'exposition de la caméra
-    await improveExposure();
-    
+  window.addEventListener('load', () => {
     loadAllVideos();
-    
+
     const marker = document.querySelector('#marker');
-    const lightWarning = document.getElementById('light-warning');
-    
+
     marker.addEventListener('markerFound', () => {
       console.log('🎯 Marker trouvé');
-      markerDetected = true;
-      lightWarning.style.display = 'none';
-      
-      if (detectionTimeout) {
-        clearTimeout(detectionTimeout);
-        detectionTimeout = null;
-      }
-      
       if (videoElement) {
-        videoElement.play().then(() => {
-          console.log('✅ Lecture OK');
-        }).catch(e => {
-          console.log('⚠️ Autoplay bloqué');
-          soundEnabled = false;
-          videoElement.muted = true;
-          videoElement.play();
-          document.getElementById('btn-sound').textContent = '🔇';
-        });
+        videoElement
+          .play()
+          .then(() => console.log('▶️ Lecture vidéo'))
+          .catch((e) => {
+            console.log('⚠️ Autoplay bloqué, mute forcé.');
+            soundEnabled = false;
+            videoElement.muted = true;
+            videoElement.play();
+            document.getElementById('btn-sound').textContent = '🔇';
+          });
       }
     });
-    
+
     marker.addEventListener('markerLost', () => {
       console.log('❌ Marker perdu');
-      markerDetected = false;
-      
       if (videoElement) {
         videoElement.pause();
       }
-      
-      // Afficher avertissement si marker pas détecté pendant 5s
-      detectionTimeout = setTimeout(() => {
-        if (!markerDetected) {
-          lightWarning.style.display = 'block';
-        }
-      }, 5000);
     });
-    
-    // Afficher l'avertissement après 3 secondes si aucun marker détecté
-    setTimeout(() => {
-      if (!markerDetected) {
-        lightWarning.style.display = 'block';
-      }
-    }, 3000);
   });
 </script>
 
