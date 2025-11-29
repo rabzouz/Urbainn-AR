@@ -103,11 +103,11 @@
 
   <a-marker preset='hiro' id="marker" emitevents="true">
     
-    <!-- Vidéo centrée sur le marker (position 0,0,0) -->
+    <!-- Vidéo verticale 9:16 (1080x1920) centrée sur le marker -->
     <a-video 
       src="#video" 
-      width="1.6" 
-      height="1.2" 
+      width="0.9" 
+      height="1.6" 
       position="0 0 0"
       rotation="-90 0 0">
     </a-video>
@@ -118,7 +118,7 @@
       value="@user" 
       position="0 1 0" 
       rotation="-90 0 0"
-      width="2.5"
+      width="1.5"
       color="#ffffff"
       align="center">
     </a-text>
@@ -171,13 +171,11 @@
     videoElement.muted = !soundEnabled;
     videoElement.load();
     
-    // Interface
     document.getElementById('video-title').textContent = video.title || 'Vidéo UrbainAR';
     document.getElementById('video-user').textContent = `@${video.user_id}`;
     document.getElementById('current').textContent = index + 1;
     document.querySelector('#username-text').setAttribute('value', `@${video.user_id}`);
     
-    // Boutons
     document.getElementById('btn-prev').disabled = index === 0;
     document.getElementById('btn-next').disabled = index === allVideos.length - 1;
     
