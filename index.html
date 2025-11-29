@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -10,7 +10,6 @@
   <style>
     body { margin: 0; overflow: hidden; }
     
-    /* Contrôles de navigation */
     #video-controls {
       position: fixed;
       bottom: 20px;
@@ -62,20 +61,22 @@
 </head>
 <body>
 
-<!-- Info vidéo courante -->
 <div id="video-info">
   <div>📹 Vidéo <span id="current-video">1</span> / <span id="total-videos">0</span></div>
   <div id="video-title" style="margin-top: 5px; color: #00ffff;">Chargement...</div>
 </div>
 
-<!-- Contrôles de navigation -->
 <div id="video-controls">
   <button id="btn-prev" onclick="previousVideo()">⬅️ Précédent</button>
   <button id="btn-sound" onclick="toggleSound()">🔊 Son ON</button>
   <button id="btn-next" onclick="nextVideo()">Suivant ➡️</button>
 </div>
 
-<a-scene embedded arjs='sourceType: webcam; debugUIEnabled: false;' vr-mode-ui="enabled: false">
+<a-scene 
+  embedded 
+  arjs='sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;' 
+  vr-mode-ui="enabled: false"
+  renderer="logarithmicDepthBuffer: true;">
   
   <a-assets>
     <video 
@@ -91,14 +92,12 @@
 
   <a-marker preset='hiro' id="marker" emitevents="true">
     
-    <!-- DISTANCE AUGMENTÉE: position Z de 0 à -3 -->
-    
     <!-- Cadre néon extérieur cyan -->
     <a-ring 
-      position="0 0.5 -3" 
+      position="0 0.5 -2" 
       rotation="-90 0 0"
-      radius-inner="2.5" 
-      radius-outer="2.7" 
+      radius-inner="2" 
+      radius-outer="2.2" 
       color="#00ffff"
       material="shader: flat; emissive: #00ffff; emissiveIntensity: 2; side: double"
       animation="property: rotation; from: -90 0 0; to: -90 0 360; loop: true; dur: 4000; easing: linear">
@@ -106,31 +105,31 @@
 
     <!-- Cadre néon intérieur magenta -->
     <a-ring 
-      position="0 0.5 -2.95" 
+      position="0 0.5 -1.95" 
       rotation="-90 0 0"
-      radius-inner="2.7" 
-      radius-outer="2.9" 
+      radius-inner="2.2" 
+      radius-outer="2.4" 
       color="#ff00ff"
       material="shader: flat; emissive: #ff00ff; emissiveIntensity: 1.5; side: double"
       animation="property: rotation; from: -90 0 0; to: -90 0 -360; loop: true; dur: 6000; easing: linear">
     </a-ring>
 
-    <!-- Vidéo centrale - TAILLE AUGMENTÉE pour meilleure qualité -->
+    <!-- Vidéo centrale -->
     <a-video 
       id="ar-video"
       src="#video" 
-      width="2.2" 
-      height="1.3" 
-      position="0 0.5 -3"
+      width="1.8" 
+      height="1.1" 
+      position="0 0.5 -2"
       rotation="-90 0 0">
     </a-video>
 
     <!-- Panneau d'informations -->
     <a-plane 
-      position="0 -0.3 -3" 
+      position="0 -0.2 -2" 
       rotation="-90 0 0"
-      width="2.4" 
-      height="0.4" 
+      width="2" 
+      height="0.35" 
       color="#000000"
       material="opacity: 0.85; transparent: true"
       animation="property: material.emissive; from: #000000; to: #0a0a0a; loop: true; dur: 1500; dir: alternate">
@@ -138,8 +137,8 @@
       <a-text 
         id="username-text"
         value="@chargement..." 
-        position="-1.1 0.1 0.01" 
-        width="1.8"
+        position="-0.9 0.08 0.01" 
+        width="1.6"
         color="#00ffff"
         align="left">
       </a-text>
@@ -147,8 +146,8 @@
       <a-text 
         id="date-text"
         value="Chargement..." 
-        position="-1.1 -0.05 0.01" 
-        width="1.5"
+        position="-0.9 -0.04 0.01" 
+        width="1.3"
         color="#ffffff"
         align="left">
       </a-text>
@@ -156,8 +155,8 @@
       <a-text 
         id="views-text"
         value="👁️ 0" 
-        position="0.4 0.1 0.01" 
-        width="1.2"
+        position="0.35 0.08 0.01" 
+        width="1.1"
         color="#00ff00"
         align="left">
       </a-text>
@@ -165,8 +164,8 @@
       <a-text 
         id="likes-text"
         value="❤️ 0" 
-        position="0.4 -0.05 0.01" 
-        width="1.2"
+        position="0.35 -0.04 0.01" 
+        width="1.1"
         color="#ff00ff"
         align="left"
         animation="property: scale; to: 1.15 1.15 1.15; loop: true; dur: 1000; dir: alternate; easing: easeInOutQuad">
@@ -174,37 +173,38 @@
 
     </a-plane>
 
-    <!-- Particules lumineuses - éloignées -->
+    <!-- Particules lumineuses -->
     <a-sphere 
-      position="1.8 1.2 -3" 
-      radius="0.06" 
+      position="1.5 1.2 -2" 
+      radius="0.05" 
       color="#00ffff"
       material="emissive: #00ffff; emissiveIntensity: 3; shader: flat"
-      animation="property: position; to: 1.8 0.2 -3; loop: true; dur: 2000; dir: alternate; easing: easeInOutQuad">
+      animation="property: position; to: 1.5 0.2 -2; loop: true; dur: 2000; dir: alternate; easing: easeInOutQuad">
     </a-sphere>
 
     <a-sphere 
-      position="-1.8 0.8 -3" 
-      radius="0.06" 
+      position="-1.5 0.8 -2" 
+      radius="0.05" 
       color="#ff00ff"
       material="emissive: #ff00ff; emissiveIntensity: 3; shader: flat"
-      animation="property: position; to: -1.8 0.3 -3; loop: true; dur: 1500; dir: alternate; easing: easeInOutQuad">
+      animation="property: position; to: -1.5 0.3 -2; loop: true; dur: 1500; dir: alternate; easing: easeInOutQuad">
     </a-sphere>
 
     <!-- Logo torique flottant -->
     <a-torus 
-      position="0 1.8 -3" 
-      radius="0.4" 
-      radius-tubular="0.05"
+      position="0 1.6 -2" 
+      radius="0.35" 
+      radius-tubular="0.045"
       color="#00ffff"
       material="emissive: #00ffff; emissiveIntensity: 2.5; shader: flat"
       animation__rotate="property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear"
-      animation__float="property: position; to: 0 2.2 -3; loop: true; dur: 2000; dir: alternate; easing: easeInOutSine">
+      animation__float="property: position; to: 0 1.9 -2; loop: true; dur: 2000; dir: alternate; easing: easeInOutSine">
     </a-torus>
 
   </a-marker>
 
-  <a-entity camera></a-entity>
+  <!-- Caméra avec paramètres ajustés pour éviter le zoom -->
+  <a-entity camera fov="70" near="0.1" far="10000" zoom="1"></a-entity>
 
 </a-scene>
 
@@ -218,7 +218,6 @@
   let videoLoaded = false;
   let soundEnabled = true;
 
-  // Charger toutes les vidéos depuis Supabase
   async function loadAllVideos() {
     try {
       const response = await fetch(`${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc`, {
@@ -241,7 +240,6 @@
     }
   }
 
-  // Charger une vidéo spécifique
   function loadVideo(index) {
     if (index < 0 || index >= allVideos.length) return;
     
@@ -258,7 +256,6 @@
       videoLoaded = true;
     }, { once: true });
     
-    // Mettre à jour l'interface
     document.querySelector('#username-text').setAttribute('value', `@${video.user_id}`);
     
     const date = new Date(video.created_at);
@@ -274,16 +271,14 @@
     document.querySelector('#views-text').setAttribute('value', `👁️ ${video.view_count}`);
     document.querySelector('#likes-text').setAttribute('value', `❤️ ${video.like_count}`);
     
-    // Mettre à jour les contrôles
     document.getElementById('current-video').textContent = index + 1;
     document.getElementById('video-title').textContent = video.title || 'UrbainAR';
     document.getElementById('btn-prev').disabled = index === 0;
     document.getElementById('btn-next').disabled = index === allVideos.length - 1;
     
-    console.log(`✅ Vidéo ${index + 1}/${allVideos.length} chargée:`, video.title);
+    console.log(`✅ Vidéo ${index + 1}/${allVideos.length}:`, video.title);
   }
 
-  // Navigation
   function nextVideo() {
     if (currentIndex < allVideos.length - 1) {
       loadVideo(currentIndex + 1);
@@ -296,7 +291,6 @@
     }
   }
 
-  // Toggle son
   function toggleSound() {
     soundEnabled = !soundEnabled;
     if (videoElement) {
@@ -305,7 +299,6 @@
     document.getElementById('btn-sound').textContent = soundEnabled ? '🔊 Son ON' : '🔇 Son OFF';
   }
 
-  // Initialisation
   window.addEventListener('load', () => {
     loadAllVideos();
     
@@ -315,10 +308,9 @@
       console.log('🎯 Marker détecté !');
       if (videoElement && videoLoaded) {
         videoElement.play().then(() => {
-          console.log('▶️ Vidéo + son en lecture');
+          console.log('▶️ Lecture avec son');
         }).catch(e => {
           console.log('⚠️ Autoplay bloqué:', e.message);
-          // Si autoplay bloqué, couper le son automatiquement
           soundEnabled = false;
           videoElement.muted = true;
           videoElement.play();
