@@ -103,27 +103,7 @@
 
   <a-marker preset='hiro' id="marker" emitevents="true">
     
-    <!-- Nom utilisateur EN HAUT - en gras et grand -->
-    <a-plane
-      position="0 1.1 0.02"
-      rotation="-90 0 0"
-      width="1.2"
-      height="0.25"
-      color="#000000"
-      material="opacity: 0.7; transparent: true">
-      
-      <a-text 
-        id="username-text"
-        value="@user" 
-        position="0 0 0.01" 
-        width="2.2"
-        color="#ffffff"
-        align="center"
-        letter-spacing="2">
-      </a-text>
-    </a-plane>
-    
-    <!-- Vidéo verticale 9:16 - PLUS PROCHE (position 0,0,0) -->
+    <!-- Vidéo seule -->
     <a-video 
       src="#video" 
       width="1.1" 
@@ -183,7 +163,6 @@
     document.getElementById('video-title').textContent = video.title || 'Vidéo UrbainAR';
     document.getElementById('video-user').textContent = `@${video.user_id}`;
     document.getElementById('current').textContent = index + 1;
-    document.querySelector('#username-text').setAttribute('value', `@${video.user_id}`);
     
     document.getElementById('btn-prev').disabled = index === 0;
     document.getElementById('btn-next').disabled = index === allVideos.length - 1;
