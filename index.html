@@ -5,12 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
     body { 
       margin: 0; 
       overflow: hidden;
       touch-action: none;
+    }
+    
+    /* Bouton flottant upload */
+    #upload-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #00ffff, #ff00ff);
+      border: 3px solid white;
+      border-radius: 50%;
+      font-size: 28px;
+      color: white;
+      cursor: pointer;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    
+    /* Modal upload */
+    #upload-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 10001;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #upload-form {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 400px;
+      font-family: Arial, sans-serif;
+    }
+    
+    #upload-form h2 {
+      margin: 0 0 20px 0;
+      color: #333;
+      text-align: center;
+    }
+    
+    #upload-form input,
+    #upload-form button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    
+    #upload-form button {
+      background: linear-gradient(135deg, #00ffff, #ff00ff);
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    #upload-form button:hover {
+      transform: scale(1.05);
+    }
+    
+    #upload-form button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    #progress-bar {
+      width: 100%;
+      height: 30px;
+      background: #f0f0f0;
+      border-radius: 15px;
+      overflow: hidden;
+      margin: 15px 0;
+      display: none;
+    }
+    
+    #progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00ffff, #ff00ff);
+      width: 0%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
     }
     
     #video-nav {
@@ -55,6 +156,7 @@
       border-radius: 10px;
       z-index: 9999;
       font-family: Arial, sans-serif;
+      max-width: 250px;
     }
     
     #video-info h3 {
@@ -71,6 +173,38 @@
 </head>
 <body>
 
+<!-- Bouton upload -->
+<button id="upload-btn" onclick="openUploadModal()" title="Uploader une vidéo">
+  ➕
+</button>
+
+<!-- Modal upload -->
+<div id="upload-modal">
+  <div id="upload-form">
+    <h2>📹 Uploader une vidéo</h2>
+    
+    <input 
+      type="text" 
+      id="video-name" 
+      placeholder="Nom de la vidéo"
+      required>
+    
+    <input 
+      type="file" 
+      id="video-file" 
+      accept="video/*"
+      capture="user"
+      required>
+    
+    <div id="progress-bar">
+      <div id="progress-fill">0%</div>
+    </div>
+    
+    <button onclick="uploadVideo()">🚀 Uploader</button>
+    <button onclick="closeUploadModal()" style="background: #999;">❌ Annuler</button>
+  </div>
+</div>
+
 <div id="video-info">
   <h3 id="video-title">Chargement...</h3>
   <p id="video-user">@utilisateur</p>
@@ -85,7 +219,18 @@
 
 <a-scene 
   embedded 
-  arjs='sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;' 
+  arjs='
+    sourceType: webcam; 
+    debugUIEnabled: false; 
+    sourceWidth: 1280; 
+    sourceHeight: 960; 
+    displayWidth: 1280; 
+    displayHeight: 960;
+    detectionMode: mono_and_matrix;
+    matrixCodeType: 3x3;
+    labelingMode: black_region;
+    patternRatio: 0.75;
+  ' 
   vr-mode-ui="enabled: false"
   renderer="logarithmicDepthBuffer: true; precision: medium;">
   
@@ -101,9 +246,15 @@
     </video>
   </a-assets>
 
-  <a-marker preset='hiro' id="marker" emitevents="true">
+  <a-marker 
+    preset='hiro' 
+    id="marker" 
+    emitevents="true"
+    smooth="true"
+    smoothCount="10"
+    smoothTolerance="0.05"
+    smoothThreshold="3">
     
-    <!-- Vidéo seule -->
     <a-video 
       src="#video" 
       width="1.1" 
@@ -122,21 +273,116 @@
   const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
 
+  // Initialiser Supabase
+  const { createClient } = supabase;
+  const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
   let allVideos = [];
   let currentIndex = 0;
   let videoElement = null;
   let soundEnabled = true;
+  let markerDetected = false;
+
+  // Ouvrir/fermer modal
+  function openUploadModal() {
+    document.getElementById('upload-modal').style.display = 'flex';
+  }
+
+  function closeUploadModal() {
+    document.getElementById('upload-modal').style.display = 'none';
+    document.getElementById('video-name').value = '';
+    document.getElementById('video-file').value = '';
+    document.getElementById('progress-bar').style.display = 'none';
+  }
+
+  // Upload vidéo
+  async function uploadVideo() {
+    const nameInput = document.getElementById('video-name');
+    const fileInput = document.getElementById('video-file');
+    const progressBar = document.getElementById('progress-bar');
+    const progressFill = document.getElementById('progress-fill');
+    
+    const videoName = nameInput.value.trim();
+    const videoFile = fileInput.files[0];
+    
+    if (!videoName || !videoFile) {
+      alert('⚠️ Veuillez remplir tous les champs');
+      return;
+    }
+    
+    try {
+      // Désactiver le bouton
+      event.target.disabled = true;
+      progressBar.style.display = 'block';
+      progressFill.style.width = '10%';
+      progressFill.textContent = '10%';
+      
+      // Générer un nom de fichier unique
+      const timestamp = Date.now();
+      const fileName = `video_${timestamp}.mp4`;
+      
+      console.log('📤 Upload en cours...');
+      progressFill.style.width = '30%';
+      progressFill.textContent = '30%';
+      
+      // Uploader vers Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabaseClient.storage
+        .from('urbainar-videos')
+        .upload(fileName, videoFile, {
+          contentType: videoFile.type,
+          upsert: false
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      console.log('✅ Fichier uploadé');
+      progressFill.style.width = '60%';
+      progressFill.textContent = '60%';
+      
+      // Générer l'URL publique
+      const { data: { publicUrl } } = supabaseClient.storage
+        .from('urbainar-videos')
+        .getPublicUrl(fileName);
+      
+      console.log('🔗 URL:', publicUrl);
+      progressFill.style.width = '80%';
+      progressFill.textContent = '80%';
+      
+      // Note: Le trigger automatique va insérer dans la table videos
+      // On attend 2 secondes pour laisser le trigger s'exécuter
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log('✅ Upload terminé !');
+      progressFill.style.width = '100%';
+      progressFill.textContent = '100%';
+      
+      // Recharger la liste
+      await loadAllVideos();
+      
+      // Fermer le modal
+      setTimeout(() => {
+        closeUploadModal();
+        alert('✅ Vidéo uploadée avec succès !');
+      }, 500);
+      
+    } catch (error) {
+      console.error('❌ Erreur upload:', error);
+      alert('❌ Erreur: ' + error.message);
+      event.target.disabled = false;
+      progressBar.style.display = 'none';
+    }
+  }
 
   async function loadAllVideos() {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc`, {
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`
-        }
-      });
+      const { data, error } = await supabaseClient
+        .from('videos')
+        .select('*')
+        .order('created_at', { ascending: false });
       
-      allVideos = await response.json();
+      if (error) throw error;
+      
+      allVideos = data;
       console.log(`✅ ${allVideos.length} vidéos chargées`);
       
       document.getElementById('total').textContent = allVideos.length;
@@ -192,13 +438,15 @@
     btn.title = soundEnabled ? 'Son ON' : 'Son OFF';
   }
 
-  window.addEventListener('load', () => {
-    loadAllVideos();
+  window.addEventListener('load', async () => {
+    await loadAllVideos();
     
     const marker = document.querySelector('#marker');
     
     marker.addEventListener('markerFound', () => {
       console.log('🎯 Marker trouvé');
+      markerDetected = true;
+      
       if (videoElement) {
         videoElement.play().then(() => {
           console.log('✅ Lecture OK');
@@ -214,6 +462,8 @@
     
     marker.addEventListener('markerLost', () => {
       console.log('❌ Marker perdu');
+      markerDetected = false;
+      
       if (videoElement) {
         videoElement.pause();
       }
