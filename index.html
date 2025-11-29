@@ -19,10 +19,12 @@
         padding: 8px 12px;
         background: rgba(0, 0, 0, 0.7);
         color: white;
-        font-size: 12px;
+        font-size: 11px;
         font-family: sans-serif;
         border-radius: 4px;
-        max-width: 80%;
+        max-width: 85%;
+        max-height: 30%;
+        overflow-y: auto;
       }
 
       #soundBtn {
@@ -63,7 +65,7 @@
     </style>
   </head>
   <body>
-    <div id="info">Chargement... Vise le marker Hiro avec bonne lumière</div>
+    <div id="info">Chargement...</div>
     <button id="soundBtn">🔊 Activer le son</button>
     
     <div id="navBtns">
@@ -73,13 +75,12 @@
 
     <a-scene 
       embedded 
-      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; maxDetectionRate: 60; canvasWidth: 640; canvasHeight: 480;"
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; maxDetectionRate: 60;"
       vr-mode-ui="enabled: false"
     >
       <a-assets id="assets"></a-assets>
 
-      <a-marker preset="hiro" id="marker" smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
-        <!-- Container unique pour une seule vidéo à la fois -->
+      <a-marker preset="hiro" id="marker" smooth="true" smoothCount="5">
         <a-entity id="videoContainer" position="0 0.5 0"></a-entity>
       </a-marker>
 
@@ -105,7 +106,7 @@
 
       async function loadVideos() {
         try {
-          info.textContent = 'Chargement des vidéos...';
+          info.textContent = 'Chargement des vidéos depuis Supabase...';
 
           const { data, error } = await supabaseClient
             .from('videos')
@@ -113,18 +114,35 @@
             .order('created_at', { ascending: false })
             .limit(10);
 
-          if (error) throw error;
+          if (error) {
+            console.error('Erreur Supabase:', error);
+            info.textContent = 'Erreur Supabase: ' + error.message;
+            throw error;
+          }
 
           videos = data || [];
           
+          // DEBUG: afficher toutes les URLs
+          console.log('=== VIDÉOS CHARGÉES ===');
+          let debugText = `${videos.length} vidéo(s) chargées:\n\n`;
+          
+          videos.forEach((v, i) => {
+            console.log(`Video ${i+1}:`, v.title, v.video_url);
+            debugText += `${i+1}. ${v.title || 'Sans titre'}\n`;
+            debugText += `   URL: ${v.video_url.substring(0, 60)}...\n`;
+            debugText += `   User: ${v.user_id}\n\n`;
+          });
+          
+          info.innerHTML = debugText.replace(/\n/g, '<br>');
+
           if (videos.length === 0) {
-            info.textContent = 'Aucune vidéo dans la base.';
+            info.textContent = 'Aucune vidéo dans la table videos.';
             return;
           }
 
           // Créer toutes les vidéos HTML
           videos.forEach((video, index) => {
-            const videoId = `vid-${video.id}`;
+            const videoId = `vid-${index}`; // Simplifié pour debug
             
             const videoEl = document.createElement('video');
             videoEl.id = videoId;
@@ -135,13 +153,20 @@
             videoEl.setAttribute('webkit-playsinline', '');
             videoEl.setAttribute('crossorigin', 'anonymous');
             
+            videoEl.addEventListener('loadeddata', () => {
+              console.log(`Vidéo ${index} prête:`, video.title);
+            });
+
+            videoEl.addEventListener('error', (e) => {
+              console.error(`Erreur vidéo ${index}:`, e, video.video_url);
+            });
+            
             assetsEl.appendChild(videoEl);
           });
 
-          info.textContent = `${videos.length} vidéo(s) chargées. Vise Hiro avec lumière.`;
-          
-          // Afficher la première
-          showVideo(0);
+          setTimeout(() => {
+            showVideo(0);
+          }, 500);
 
         } catch (err) {
           console.error('Erreur:', err);
@@ -150,23 +175,30 @@
       }
 
       function showVideo(index) {
-        if (!videos[index]) return;
+        if (!videos[index]) {
+          console.error('Vidéo inexistante à l\'index', index);
+          return;
+        }
 
         currentIndex = index;
         const video = videos[index];
-        const videoId = `vid-${video.id}`;
+        const videoId = `vid-${index}`;
         const videoEl = document.getElementById(videoId);
+
+        console.log(`=== AFFICHAGE VIDÉO ${index + 1} ===`);
+        console.log('Titre:', video.title);
+        console.log('URL:', video.video_url);
+        console.log('Élément vidéo:', videoEl);
 
         // Vider le container
         while (containerEl.firstChild) {
           containerEl.removeChild(containerEl.firstChild);
         }
 
-        // Créer le panneau pour cette vidéo
         const videoWidth = 0.9;
         const videoHeight = videoWidth * (16 / 9);
 
-        // Plane vidéo CENTRÉ (position 0 0 0)
+        // Plane vidéo
         const plane = document.createElement('a-plane');
         plane.setAttribute('width', videoWidth);
         plane.setAttribute('height', videoHeight);
@@ -175,6 +207,7 @@
         plane.setAttribute('position', '0 0 0');
         
         plane.addEventListener('click', function() {
+          console.log('Click sur vidéo', index);
           videoEl.muted = false;
           videoEl.play();
           soundBtn.style.display = 'none';
@@ -182,7 +215,7 @@
 
         containerEl.appendChild(plane);
 
-        // Logo UrbainAR
+        // Logo
         const logo = document.createElement('a-text');
         logo.setAttribute('value', 'UrbainAR');
         logo.setAttribute('align', 'center');
@@ -192,67 +225,59 @@
         logo.setAttribute('rotation', '-90 0 0');
         containerEl.appendChild(logo);
 
-        // Username
-        const username = document.createElement('a-text');
-        username.setAttribute('value', `@${video.user_id || 'anonyme'}`);
-        username.setAttribute('align', 'center');
-        username.setAttribute('width', '1.8');
-        username.setAttribute('color', '#FFFFFF');
-        username.setAttribute('position', `0 0.02 ${videoHeight / 2 + 0.12}`);
-        username.setAttribute('rotation', '-90 0 0');
-        containerEl.appendChild(username);
-
-        // Vues
-        const views = document.createElement('a-text');
-        views.setAttribute('value', `👁 ${video.view_count || 0}`);
-        views.setAttribute('align', 'left');
-        views.setAttribute('width', '1.2');
-        views.setAttribute('color', '#FFFFFF');
-        views.setAttribute('position', `${-videoWidth / 2 + 0.05} 0.02 ${-videoHeight / 2 - 0.12}`);
-        views.setAttribute('rotation', '-90 0 0');
-        containerEl.appendChild(views);
-
-        // Likes
-        const likes = document.createElement('a-text');
-        likes.setAttribute('value', `❤ ${video.like_count || 0}`);
-        likes.setAttribute('align', 'right');
-        likes.setAttribute('width', '1.2');
-        likes.setAttribute('color', '#FF5A7A');
-        likes.setAttribute('position', `${videoWidth / 2 - 0.05} 0.02 ${-videoHeight / 2 - 0.12}`);
-        likes.setAttribute('rotation', '-90 0 0');
-        containerEl.appendChild(likes);
-
         // Titre
         const title = document.createElement('a-text');
         title.setAttribute('value', video.title || 'Sans titre');
         title.setAttribute('align', 'center');
-        title.setAttribute('width', '1.5');
-        title.setAttribute('color', '#FFFFFF');
-        title.setAttribute('position', `0 0.02 ${-videoHeight / 2 - 0.25}`);
+        title.setAttribute('width', '2');
+        title.setAttribute('color', '#FFFF00');
+        title.setAttribute('position', `0 0.02 ${videoHeight / 2 + 0.1}`);
         title.setAttribute('rotation', '-90 0 0');
         containerEl.appendChild(title);
 
-        // Play la vidéo
+        // Username
+        const username = document.createElement('a-text');
+        username.setAttribute('value', `@${video.user_id || 'anonyme'}`);
+        username.setAttribute('align', 'center');
+        username.setAttribute('width', '1.5');
+        username.setAttribute('color', '#FFFFFF');
+        username.setAttribute('position', `0 0.02 ${-videoHeight / 2 - 0.15}`);
+        username.setAttribute('rotation', '-90 0 0');
+        containerEl.appendChild(username);
+
+        // Vues / Likes
+        const stats = document.createElement('a-text');
+        stats.setAttribute('value', `👁 ${video.view_count || 0}  ❤ ${video.like_count || 0}`);
+        stats.setAttribute('align', 'center');
+        stats.setAttribute('width', '1.3');
+        stats.setAttribute('color', '#FFFFFF');
+        stats.setAttribute('position', `0 0.02 ${-videoHeight / 2 - 0.28}`);
+        stats.setAttribute('rotation', '-90 0 0');
+        containerEl.appendChild(stats);
+
+        // Play
+        videoEl.currentTime = 0;
         videoEl.play().catch(e => console.log('autoplay:', e));
 
-        info.textContent = `Vidéo ${index + 1}/${videos.length}: ${video.title || 'Sans titre'}`;
+        info.textContent = `Vidéo ${index + 1}/${videos.length}: "${video.title || 'Sans titre'}" - ${video.video_url.substring(video.video_url.lastIndexOf('/') + 1, video.video_url.lastIndexOf('/') + 30)}...`;
       }
 
       // Navigation
       prevBtn.addEventListener('click', () => {
         const newIndex = (currentIndex - 1 + videos.length) % videos.length;
+        console.log('Navigation PREV:', currentIndex, '->', newIndex);
         showVideo(newIndex);
       });
 
       nextBtn.addEventListener('click', () => {
         const newIndex = (currentIndex + 1) % videos.length;
+        console.log('Navigation NEXT:', currentIndex, '->', newIndex);
         showVideo(newIndex);
       });
 
-      // Son global
       soundBtn.addEventListener('click', () => {
-        const currentVideoId = `vid-${videos[currentIndex].id}`;
-        const videoEl = document.getElementById(currentVideoId);
+        const videoId = `vid-${currentIndex}`;
+        const videoEl = document.getElementById(videoId);
         videoEl.muted = false;
         videoEl.play();
         soundBtn.style.display = 'none';
