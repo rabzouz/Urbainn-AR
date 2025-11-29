@@ -1,31 +1,31 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
   <head>
-    <meta charset="utf-8">
-    <title>UrbainAR - Toutes les vidéos</title>
+    <meta charset="utf-8" />
+    <title>UrbainAR WebAR (toutes vidéos)</title>
 
-    <script src="https://aframe.io/releases/0.8.0/aframe.min.js"></script>
-    <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.6.0/aframe/build/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- AR.js (location/webcam) -->
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
+    <!-- Gestes (pinch zoom, etc.) -->
+    <script src="https://cdn.jsdelivr.net/gh/fcor/arjs-gestures@master/dist/gestures.js"></script>
 
     <style>
       body, html { margin: 0; overflow: hidden; }
 
-      #playBtn {
+      #playWithSound {
         position: fixed;
         z-index: 10;
-        bottom: 140px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 12px 24px;
-        background: rgba(0, 0, 0, 0.8);
+        bottom: 60px;
+        left: 12px;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.7);
         color: white;
         border: none;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: bold;
-        font-family: sans-serif;
-        cursor: pointer;
+        border-radius: 4px;
+        font-size: 14px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
       #info {
@@ -34,10 +34,11 @@
         top: 10px;
         left: 10px;
         padding: 8px 12px;
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.6);
         color: white;
         font-size: 12px;
-        font-family: sans-serif;
+        max-width: 80%;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
       #video-ui {
@@ -52,7 +53,7 @@
         align-items: center;
         background: rgba(0, 0, 0, 0.75);
         color: #fff;
-        font-family: sans-serif;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         font-size: 13px;
       }
 
@@ -69,35 +70,24 @@
         border: none;
         color: #ff5a7a;
         font-size: 20px;
+        line-height: 1;
+        padding: 0 4px;
         cursor: pointer;
       }
 
-      .nav-btn {
-        position: fixed;
-        z-index: 10;
-        bottom: 70px;
-        padding: 12px 16px;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 18px;
-        cursor: pointer;
-        font-family: sans-serif;
+      div.a-enter-vr,
+      div.a-enter-ar {
+        display: none !important;
       }
-
-      #prevBtn { left: 20px; }
-      #nextBtn { right: 20px; }
     </style>
   </head>
-
-  <body style='margin: 0; overflow: hidden;'>
-    <div id="info">Chargement des vidéos...</div>
+  <body>
+    <div id="info">Chargement de la vidéo...</div>
 
     <div id="video-ui">
       <div>
         <div id="video-title">UrbainAR</div>
-        <div id="video-views">-- vues</div>
+        <div id="video-views">0 vues</div>
       </div>
       <div id="video-stats">
         <button id="likeBtn">♡</button>
@@ -105,206 +95,211 @@
       </div>
     </div>
 
-    <button id="playBtn">🔊 Activer le son</button>
-    <button id="prevBtn" class="nav-btn">◀</button>
-    <button id="nextBtn" class="nav-btn">▶</button>
+    <button id="playWithSound">Activer le son</button>
 
-    <a-scene id="scene" embedded arjs>
-      <a-assets id="assets"></a-assets>
-      <a-marker preset="hiro" id="hiroMarker"></a-marker>
-      <a-entity camera></a-entity>
+    <a-scene
+      embedded
+      xr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true"
+      arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
+    >
+      <a-assets>
+        <!-- vidéo principale (celle cliquée) -->
+        <video
+          id="video-texture"
+          src=""
+          loop="true"
+          muted
+          playsinline
+          webkit-playsinline
+          crossorigin="anonymous"
+        ></video>
+      </a-assets>
+
+      <a-camera></a-camera>
     </a-scene>
 
     <script>
-      console.log('Script démarré');
+      const vid       = document.getElementById("video-texture");
+      const btn       = document.getElementById("playWithSound");
+      const info      = document.getElementById("info");
+      const viewsEl   = document.getElementById("video-views");
+      const likesEl   = document.getElementById("video-likes");
+      const likeBtn   = document.getElementById("likeBtn");
+      const titleEl   = document.getElementById("video-title");
+      const sceneEl   = document.querySelector("a-scene");
 
-      const info = document.getElementById('info');
-      const btn = document.getElementById('playBtn');
-      const likeBtn = document.getElementById('likeBtn');
-      const likesEl = document.getElementById('video-likes');
-      const titleEl = document.getElementById('video-title');
-      const viewsEl = document.getElementById('video-views');
-      const prevBtn = document.getElementById('prevBtn');
-      const nextBtn = document.getElementById('nextBtn');
+      let videoUrl = null;
+      let videoId  = null;
+      let clusterVideos = [];
+      const htmlVideos = []; // toutes les balises <video> créées (pour activer le son)
+      let mainPanel = null;  // panneau principal devant la caméra
 
-      const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
-      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
-
-      const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      console.log('Client Supabase créé');
-
-      let videos = [];
-      let videoElements = [];
-      let currentVideo = null;
-      let currentIndex = 0;
-
-      async function loadVideos() {
+      function getParams() {
         try {
-          console.log('Chargement vidéos depuis Supabase...');
-          info.textContent = 'Chargement des vidéos...';
-          
-          const { data, error } = await supabaseClient
-            .from('videos')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(20);
+          const params       = new URLSearchParams(window.location.search);
+          const videoParam   = params.get("video");
+          const titleParam   = params.get("title");
+          const idParam      = params.get("id");
+          const clusterParam = params.get("cluster");
 
-          if (error) {
-            console.error('Erreur Supabase:', error);
-            throw error;
-          }
-
-          videos = data || [];
-          console.log(`${videos.length} vidéo(s) chargée(s)`);
-          info.textContent = `${videos.length} vidéo(s). Vise Hiro.`;
-
-          if (videos.length === 0) {
-            info.textContent = 'Aucune vidéo. Utilise l\'app pour poster !';
-            prevBtn.style.display = 'none';
-            nextBtn.style.display = 'none';
-            return;
-          }
-
-          // Cacher navigation si une seule vidéo
-          if (videos.length === 1) {
-            prevBtn.style.display = 'none';
-            nextBtn.style.display = 'none';
-          }
-
-          createVideoPlanes();
-        } catch (err) {
-          console.error('Erreur:', err);
-          info.textContent = 'Erreur: ' + err.message;
-        }
-      }
-
-      function createVideoPlanes() {
-        const assets = document.getElementById('assets');
-        const marker = document.getElementById('hiroMarker');
-
-        videos.forEach((video, index) => {
-          // Créer élément vidéo
-          const videoEl = document.createElement('video');
-          videoEl.id = `vid-${video.id}`;
-          videoEl.src = video.video_url;
-          videoEl.loop = true;
-          videoEl.muted = true;
-          videoEl.setAttribute('playsinline', '');
-          videoEl.setAttribute('webkit-playsinline', '');
-          videoEl.setAttribute('crossorigin', 'anonymous');
-          
-          videoEl.addEventListener('canplay', () => {
-            console.log('Vidéo prête:', video.title);
-          });
-
-          videoEl.addEventListener('error', (e) => {
-            console.error('Erreur vidéo:', video.title, e);
-          });
-
-          assets.appendChild(videoEl);
-          videoElements.push({ video: video, element: videoEl });
-
-          // Position CENTRÉE sur le marker
-          const plane = document.createElement('a-video');
-          plane.setAttribute('src', `#vid-${video.id}`);
-          plane.setAttribute('position', '0 0.5 0');
-          plane.setAttribute('rotation', '-90 0 0');
-          plane.setAttribute('width', '0.9');
-          plane.setAttribute('height', '1.6');
-          plane.setAttribute('visible', index === 0);
-
-          marker.appendChild(plane);
-        });
-
-        // Sélectionner la première
-        if (videoElements.length > 0) {
-          selectVideo(0);
-        }
-      }
-
-      function selectVideo(index) {
-        currentIndex = index;
-        const item = videoElements[index];
-        currentVideo = item;
-        
-        // Mettre à jour UI
-        titleEl.textContent = item.video.title || 'UrbainAR';
-        viewsEl.textContent = (item.video.view_count || 0) + ' vues';
-        likesEl.textContent = item.video.like_count || 0;
-        info.textContent = `Vidéo ${index + 1}/${videos.length}`;
-
-        // Afficher seulement cette vidéo
-        const marker = document.getElementById('hiroMarker');
-        const planes = marker.querySelectorAll('a-video');
-        planes.forEach((plane, i) => {
-          plane.setAttribute('visible', i === index);
-        });
-
-        // Play cette vidéo, pause les autres
-        videoElements.forEach((v, i) => {
-          if (i === index) {
-            v.element.play();
+          if (videoParam) {
+            videoUrl   = decodeURIComponent(videoParam);
+            vid.src    = videoUrl;
+            info.textContent = "Vidéo chargée. Autorise la caméra, puis appuie sur Activer le son.";
           } else {
-            v.element.pause();
+            info.textContent = "Paramètre ?video= manquant dans l'URL.";
           }
+
+          if (titleParam) {
+            titleEl.textContent = decodeURIComponent(titleParam);
+          }
+
+          videoId = idParam || null;
+
+          if (clusterParam) {
+            const json = decodeURIComponent(clusterParam);
+            clusterVideos = JSON.parse(json); // liste de VideoData
+          }
+        } catch (e) {
+          console.log("Erreur lecture paramètres URL:", e);
+          info.textContent = "Erreur de lecture des paramètres d'URL.";
+        }
+      }
+
+      function createHtmlVideo(id, src, autoplayMuted = true) {
+        const videoEl = document.createElement("video");
+        videoEl.id = id;
+        videoEl.src = src;
+        videoEl.loop = true;
+        videoEl.crossOrigin = "anonymous";
+        videoEl.setAttribute("playsinline", "");
+        videoEl.setAttribute("webkit-playsinline", "");
+        if (autoplayMuted) {
+          videoEl.muted = true;
+          videoEl.play().catch(() => {});
+        }
+        document.body.appendChild(videoEl);
+        htmlVideos.push(videoEl);
+        return videoEl;
+      }
+
+      // panneaux du cluster: ratio 9:16
+      function createVideoPanel(videoId, index, total) {
+        const radius = 4;
+        const yPos   = 1.6;
+        const angle  = (index / total) * 2 * Math.PI;
+        const x = radius * Math.cos(angle);
+        const z = -radius * Math.sin(angle);
+
+        const width  = 0.6;
+        const height = width * (16 / 9); // vertical 9:16
+
+        const panel = document.createElement("a-entity");
+        panel.setAttribute("geometry", `primitive: plane; width: ${width}; height: ${height}`);
+        panel.setAttribute("material", `shader: flat; src: #${videoId}`);
+        panel.setAttribute("position", `${x} ${yPos} ${z}`);
+        panel.setAttribute("look-at", "[camera]");
+
+        panel.addEventListener("click", () => {
+          const v = document.getElementById(videoId);
+          v.muted = false;
+          v.play().catch(err => console.log("Erreur lecture:", err));
+          btn.style.display = "none";
+        });
+
+        sceneEl.appendChild(panel);
+      }
+
+      // panneau principal: ratio 9:16 par défaut
+      function createMainPanel() {
+        const baseWidth  = 0.9;
+        const baseHeight = baseWidth * (16 / 9); // 1080x1920 => 9:16
+
+        mainPanel = document.createElement("a-entity");
+        mainPanel.setAttribute(
+          "geometry",
+          `primitive: plane; width: ${baseWidth}; height: ${baseHeight}`
+        );
+        mainPanel.setAttribute("material", "shader: flat; src: #video-texture");
+        mainPanel.setAttribute("position", "0 1.6 -3");
+        mainPanel.setAttribute("look-at", "[camera]");
+        mainPanel.setAttribute("gesture-handler", "minScale: 0.2; maxScale: 2");
+
+        mainPanel.addEventListener("click", () => {
+          vid.muted = false;
+          vid.play().catch(err => console.log("Erreur lecture:", err));
+          btn.style.display = "none";
+        });
+
+        sceneEl.appendChild(mainPanel);
+      }
+
+      function setupClusterPanels() {
+        if (!clusterVideos || !clusterVideos.length) return;
+        clusterVideos.forEach((v, index) => {
+          const id = `vid_${v.id}`;
+          createHtmlVideo(id, v.videoUrl);
+          createVideoPanel(id, index, clusterVideos.length);
         });
       }
 
-      // Navigation
-      prevBtn.addEventListener('click', () => {
-        if (videos.length > 0) {
-          currentIndex = (currentIndex - 1 + videos.length) % videos.length;
-          selectVideo(currentIndex);
-        }
+      getParams();
+
+      // Ajuster le ratio du panneau principal quand la vidéo est prête
+      vid.addEventListener("loadedmetadata", () => {
+        const vw = vid.videoWidth;
+        const vh = vid.videoHeight;
+        if (!vw || !vh || !mainPanel) return;
+
+        const aspect = vh / vw; // pour 1080x1920 ≈ 1.777
+        const targetWidth  = 0.9;
+        const targetHeight = targetWidth * aspect;
+
+        mainPanel.setAttribute(
+          "geometry",
+          `primitive: plane; width: ${targetWidth}; height: ${targetHeight}`
+        );
       });
 
-      nextBtn.addEventListener('click', () => {
-        if (videos.length > 0) {
-          currentIndex = (currentIndex + 1) % videos.length;
-          selectVideo(currentIndex);
-        }
+      // Quand la scène est prête
+      sceneEl.addEventListener("loaded", () => {
+        if (!videoUrl) return;
+
+        createMainPanel();
+        setupClusterPanels();
+
+        vid.muted = true;
+        vid.play().catch(err => console.log("autoplay error:", err));
+
+        viewsEl.textContent = "1 vue";
       });
 
-      // Activer son
-      btn.addEventListener('click', function() {
-        console.log('Activation son');
-        videoElements.forEach(v => {
-          v.element.muted = false;
+      // Bouton global pour activer le son sur toutes les vidéos
+      btn.addEventListener("click", () => {
+        if (!videoUrl) return;
+        htmlVideos.concat([vid]).forEach(v => {
+          v.muted = false;
+          v.play().catch(err => console.log("play error:", err));
         });
-        if (currentVideo) {
-          currentVideo.element.play();
-        }
-        btn.style.display = 'none';
-        info.textContent = 'Son activé !';
+        btn.style.display = "none";
       });
 
-      // Likes
+      // Bouton like local
+      let localLikes = 0;
       let liked = false;
 
-      likeBtn.addEventListener('click', function() {
-        if (!currentVideo) return;
-
+      likeBtn.addEventListener("click", () => {
         liked = !liked;
         if (liked) {
-          likeBtn.textContent = '❤';
-          const newCount = (currentVideo.video.like_count || 0) + 1;
-          likesEl.textContent = newCount;
-          currentVideo.video.like_count = newCount;
-          
-          // TODO: Sauvegarder dans Supabase
-          // supabaseClient.from('videos').update({ like_count: newCount }).eq('id', currentVideo.video.id)
+          localLikes += 1;
+          likeBtn.textContent = "❤";
         } else {
-          likeBtn.textContent = '♡';
-          const newCount = Math.max(0, (currentVideo.video.like_count || 0) - 1);
-          likesEl.textContent = newCount;
-          currentVideo.video.like_count = newCount;
+          localLikes = Math.max(0, localLikes - 1);
+          likeBtn.textContent = "♡";
         }
-      });
-
-      // Charger au démarrage
-      document.getElementById('scene').addEventListener('loaded', () => {
-        console.log('Scène A-Frame chargée');
-        loadVideos();
+        likesEl.textContent = localLikes.toString();
+        // TODO: appeler ton backend / Firestore plus tard
       });
     </script>
   </body>
