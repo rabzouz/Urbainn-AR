@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>UrbainAR - Simple</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   
   <style>
@@ -13,58 +11,127 @@
 </head>
 <body>
 
-<a-scene embedded arjs='sourceType: webcam; debugUIEnabled: false;' vr-mode-ui="enabled: false">
+<a-scene embedded arjs='sourceType: webcam; debugUIEnabled: false;'>
   
   <a-assets>
-    <video 
-      id="video" 
-      crossorigin="anonymous"
-      preload="auto" 
-      loop 
-      playsinline 
-      webkit-playsinline>
-    </video>
+    <video id="video" preload="auto" loop="true" crossorigin="anonymous"></video>
   </a-assets>
 
-  <a-marker preset='hiro' id="marker" emitevents="true">
+  <a-marker preset='hiro'>
     
-    <!-- Juste la vidéo, simple -->
+    <!-- Cadre néon extérieur cyan -->
+    <a-ring 
+      position="0 0 -0.01" 
+      radius-inner="1.8" 
+      radius-outer="2" 
+      color="#00ffff"
+      material="shader: flat; emissive: #00ffff; emissiveIntensity: 2; side: double"
+      animation="property: rotation; to: 0 0 360; loop: true; dur: 4000; easing: linear">
+    </a-ring>
+
+    <!-- Cadre néon intérieur magenta -->
+    <a-ring 
+      position="0 0 -0.02" 
+      radius-inner="2" 
+      radius-outer="2.1" 
+      color="#ff00ff"
+      material="shader: flat; emissive: #ff00ff; emissiveIntensity: 1.5; side: double"
+      animation="property: rotation; to: 0 0 -360; loop: true; dur: 6000; easing: linear">
+    </a-ring>
+
+    <!-- Vidéo centrale -->
     <a-video 
+      id="ar-video"
       src="#video" 
-      width="2" 
-      height="1.5" 
-      position="0 0.5 0"
-      rotation="-90 0 0">
+      width="3.2" 
+      height="1.8" 
+      position="0 0 0">
     </a-video>
-    
-    <!-- Infos en dessous -->
+
+    <!-- Panneau d'informations avec fond semi-transparent -->
     <a-plane 
-      position="0 -0.3 0" 
-      width="2.2" 
-      height="0.4" 
+      position="0 -1.2 0" 
+      width="3.5" 
+      height="0.6" 
       color="#000000"
-      material="opacity: 0.7; transparent: true"
-      rotation="-90 0 0">
+      material="opacity: 0.85; transparent: true"
+      animation="property: material.emissive; from: #000000; to: #0a0a0a; loop: true; dur: 1500; dir: alternate">
       
+      <!-- Nom d'utilisateur (dynamique) -->
       <a-text 
         id="username-text"
-        value="@user" 
-        position="-1 0.15 0.01" 
-        width="3"
-        color="#ffffff"
-        align="left">
+        value="@chargement..." 
+        position="-1.6 0.15 0.01" 
+        width="2.5"
+        color="#00ffff"
+        font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+        shader="msdf">
       </a-text>
 
+      <!-- Date et heure (dynamique) -->
       <a-text 
-        id="info-text"
-        value="❤️ 0 | 👁️ 0" 
-        position="-1 -0.05 0.01" 
-        width="3"
-        color="#cccccc"
-        align="left">
+        id="date-text"
+        value="Chargement..." 
+        position="-1.6 -0.05 0.01" 
+        width="2"
+        color="#ffffff"
+        font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+        shader="msdf">
+      </a-text>
+
+      <!-- Compteur de vues -->
+      <a-text 
+        id="views-text"
+        value="👁️ 0" 
+        position="0.5 0.15 0.01" 
+        width="1.8"
+        color="#00ff00"
+        font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+        shader="msdf">
+      </a-text>
+
+      <!-- Compteur de likes avec animation -->
+      <a-text 
+        id="likes-text"
+        value="❤️ 0" 
+        position="0.5 -0.05 0.01" 
+        width="1.8"
+        color="#ff00ff"
+        font="https://cdn.aframe.io/fonts/Roboto-msdf.json"
+        shader="msdf"
+        animation="property: scale; to: 1.15 1.15 1.15; loop: true; dur: 1000; dir: alternate; easing: easeInOutQuad">
       </a-text>
 
     </a-plane>
+
+    <!-- Particules lumineuses flottantes gauche -->
+    <a-sphere 
+      position="2.2 1 0" 
+      radius="0.08" 
+      color="#00ffff"
+      material="emissive: #00ffff; emissiveIntensity: 3; shader: flat"
+      animation="property: position; to: 2.2 -1 0; loop: true; dur: 2000; dir: alternate; easing: easeInOutQuad">
+    </a-sphere>
+
+    <!-- Particules lumineuses flottantes droite -->
+    <a-sphere 
+      position="-2.2 0.5 0" 
+      radius="0.08" 
+      color="#ff00ff"
+      material="emissive: #ff00ff; emissiveIntensity: 3; shader: flat"
+      animation="property: position; to: -2.2 -0.5 0; loop: true; dur: 1500; dir: alternate; easing: easeInOutQuad">
+    </a-sphere>
+
+    <!-- Logo torique flottant au-dessus -->
+    <a-torus 
+      position="0 1.5 0" 
+      radius="0.4" 
+      radius-tubular="0.05"
+      color="#00ffff"
+      material="emissive: #00ffff; emissiveIntensity: 2.5; shader: flat"
+      animation__rotate="property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear"
+      animation__float="property: position; to: 0 1.8 0; loop: true; dur: 2000; dir: alternate; easing: easeInOutSine">
+    </a-torus>
 
   </a-marker>
 
@@ -76,13 +143,10 @@
   const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
 
-  let videoElement = null;
-
-  // Charger la vidéo au démarrage
-  window.addEventListener('load', async function() {
-    
+  // Fonction pour récupérer les données d'une vidéo depuis Supabase
+  async function loadVideoData(videoId = 1) {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc&limit=1`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/videos?id=eq.${videoId}`, {
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`
@@ -94,38 +158,50 @@
       if (data && data.length > 0) {
         const video = data[0];
         
-        // Charger la vidéo
-        videoElement = document.querySelector('#video');
+        // Mettre à jour la vidéo
+        const videoElement = document.querySelector('#video');
         videoElement.src = video.video_url;
         videoElement.load();
+        videoElement.play();
         
-        // Mettre à jour les textes
+        // Mettre à jour le nom d'utilisateur
         document.querySelector('#username-text').setAttribute('value', `@${video.user_id}`);
-        document.querySelector('#info-text').setAttribute('value', `❤️ ${video.like_count} | 👁️ ${video.view_count}`);
         
-        console.log('✅ Vidéo chargée');
+        // Formater et afficher la date
+        const date = new Date(video.created_at);
+        const formattedDate = date.toLocaleString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        document.querySelector('#date-text').setAttribute('value', formattedDate);
+        
+        // Mettre à jour les compteurs
+        document.querySelector('#views-text').setAttribute('value', `👁️ ${video.view_count}`);
+        document.querySelector('#likes-text').setAttribute('value', `❤️ ${video.like_count}`);
+        
+        console.log('✅ Vidéo chargée:', video.title);
       }
     } catch (error) {
-      console.error('❌ Erreur:', error);
+      console.error('❌ Erreur chargement vidéo:', error);
+      document.querySelector('#username-text').setAttribute('value', '@erreur');
+      document.querySelector('#date-text').setAttribute('value', 'Erreur de connexion');
     }
-    
-    // Détecter le marker
-    const marker = document.querySelector('#marker');
-    
-    marker.addEventListener('markerFound', function() {
-      console.log('🎯 Marker trouvé');
-      if (videoElement) {
-        videoElement.play().catch(e => console.log('Play:', e));
-      }
-    });
-    
-    marker.addEventListener('markerLost', function() {
-      console.log('❌ Marker perdu');
-      if (videoElement) {
-        videoElement.pause();
-      }
-    });
+  }
+
+  // Charger les données au démarrage de la scène
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      loadVideoData(1); // Charger la première vidéo (ID = 1)
+    }, 1000);
   });
+
+  // Optionnel: recharger les données toutes les 10 secondes
+  setInterval(() => {
+    loadVideoData(1);
+  }, 10000);
 </script>
 
 </body>
