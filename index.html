@@ -2,81 +2,91 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   
   <style>
     body { margin: 0; overflow: hidden; }
     
-    #video-controls {
+    /* Contrôles navigation */
+    #video-nav {
       position: fixed;
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 9999;
       display: flex;
-      gap: 10px;
+      gap: 15px;
+    }
+    
+    #video-nav button {
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
       background: rgba(0,0,0,0.7);
-      padding: 15px;
-      border-radius: 15px;
-      border: 2px solid #00ffff;
-    }
-    
-    #video-controls button {
-      padding: 12px 20px;
-      font-size: 16px;
-      background: linear-gradient(135deg, #00ffff, #ff00ff);
       color: white;
-      border: none;
-      border-radius: 8px;
+      border: 2px solid white;
+      border-radius: 50%;
       cursor: pointer;
-      font-weight: bold;
-      transition: transform 0.2s;
+      transition: all 0.3s;
     }
     
-    #video-controls button:hover {
+    #video-nav button:hover {
+      background: rgba(255,255,255,0.2);
       transform: scale(1.1);
     }
     
-    #video-controls button:disabled {
-      opacity: 0.5;
+    #video-nav button:disabled {
+      opacity: 0.3;
       cursor: not-allowed;
     }
     
+    /* Info vidéo */
     #video-info {
       position: fixed;
       top: 20px;
       left: 20px;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.7);
       color: white;
-      padding: 10px 15px;
+      padding: 15px 20px;
       border-radius: 10px;
-      border: 2px solid #00ffff;
       z-index: 9999;
       font-family: Arial, sans-serif;
+    }
+    
+    #video-info h3 {
+      margin: 0 0 5px 0;
+      font-size: 18px;
+    }
+    
+    #video-info p {
+      margin: 3px 0;
+      font-size: 14px;
+      opacity: 0.8;
     }
   </style>
 </head>
 <body>
 
+<!-- Info vidéo -->
 <div id="video-info">
-  <div>📹 Vidéo <span id="current-video">1</span> / <span id="total-videos">0</span></div>
-  <div id="video-title" style="margin-top: 5px; color: #00ffff;">Chargement...</div>
+  <h3 id="video-title">Chargement...</h3>
+  <p id="video-user">@utilisateur</p>
+  <p id="video-count">Vidéo <span id="current">1</span>/<span id="total">0</span></p>
 </div>
 
-<div id="video-controls">
-  <button id="btn-prev" onclick="previousVideo()">⬅️ Précédent</button>
-  <button id="btn-sound" onclick="toggleSound()">🔊 Son ON</button>
-  <button id="btn-next" onclick="nextVideo()">Suivant ➡️</button>
+<!-- Navigation -->
+<div id="video-nav">
+  <button id="btn-prev" onclick="previousVideo()" title="Vidéo précédente">⬅️</button>
+  <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF">🔊</button>
+  <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante">➡️</button>
 </div>
 
 <a-scene 
   embedded 
-  arjs='sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960;' 
-  vr-mode-ui="enabled: false"
-  renderer="logarithmicDepthBuffer: true;">
+  arjs='sourceType: webcam; debugUIEnabled: false;' 
+  vr-mode-ui="enabled: false">
   
   <a-assets>
     <video 
@@ -92,119 +102,29 @@
 
   <a-marker preset='hiro' id="marker" emitevents="true">
     
-    <!-- Cadre néon extérieur cyan -->
-    <a-ring 
-      position="0 0.5 -2" 
-      rotation="-90 0 0"
-      radius-inner="2" 
-      radius-outer="2.2" 
-      color="#00ffff"
-      material="shader: flat; emissive: #00ffff; emissiveIntensity: 2; side: double"
-      animation="property: rotation; from: -90 0 0; to: -90 0 360; loop: true; dur: 4000; easing: linear">
-    </a-ring>
-
-    <!-- Cadre néon intérieur magenta -->
-    <a-ring 
-      position="0 0.5 -1.95" 
-      rotation="-90 0 0"
-      radius-inner="2.2" 
-      radius-outer="2.4" 
-      color="#ff00ff"
-      material="shader: flat; emissive: #ff00ff; emissiveIntensity: 1.5; side: double"
-      animation="property: rotation; from: -90 0 0; to: -90 0 -360; loop: true; dur: 6000; easing: linear">
-    </a-ring>
-
-    <!-- Vidéo centrale -->
+    <!-- Vidéo simple -->
     <a-video 
-      id="ar-video"
       src="#video" 
-      width="1.8" 
-      height="1.1" 
+      width="2" 
+      height="1.5" 
       position="0 0.5 -2"
       rotation="-90 0 0">
     </a-video>
-
-    <!-- Panneau d'informations -->
-    <a-plane 
-      position="0 -0.2 -2" 
+    
+    <!-- Nom utilisateur au-dessus de la vidéo -->
+    <a-text 
+      id="username-text"
+      value="@user" 
+      position="0 1.5 -2" 
       rotation="-90 0 0"
-      width="2" 
-      height="0.35" 
-      color="#000000"
-      material="opacity: 0.85; transparent: true"
-      animation="property: material.emissive; from: #000000; to: #0a0a0a; loop: true; dur: 1500; dir: alternate">
-      
-      <a-text 
-        id="username-text"
-        value="@chargement..." 
-        position="-0.9 0.08 0.01" 
-        width="1.6"
-        color="#00ffff"
-        align="left">
-      </a-text>
-
-      <a-text 
-        id="date-text"
-        value="Chargement..." 
-        position="-0.9 -0.04 0.01" 
-        width="1.3"
-        color="#ffffff"
-        align="left">
-      </a-text>
-
-      <a-text 
-        id="views-text"
-        value="👁️ 0" 
-        position="0.35 0.08 0.01" 
-        width="1.1"
-        color="#00ff00"
-        align="left">
-      </a-text>
-
-      <a-text 
-        id="likes-text"
-        value="❤️ 0" 
-        position="0.35 -0.04 0.01" 
-        width="1.1"
-        color="#ff00ff"
-        align="left"
-        animation="property: scale; to: 1.15 1.15 1.15; loop: true; dur: 1000; dir: alternate; easing: easeInOutQuad">
-      </a-text>
-
-    </a-plane>
-
-    <!-- Particules lumineuses -->
-    <a-sphere 
-      position="1.5 1.2 -2" 
-      radius="0.05" 
-      color="#00ffff"
-      material="emissive: #00ffff; emissiveIntensity: 3; shader: flat"
-      animation="property: position; to: 1.5 0.2 -2; loop: true; dur: 2000; dir: alternate; easing: easeInOutQuad">
-    </a-sphere>
-
-    <a-sphere 
-      position="-1.5 0.8 -2" 
-      radius="0.05" 
-      color="#ff00ff"
-      material="emissive: #ff00ff; emissiveIntensity: 3; shader: flat"
-      animation="property: position; to: -1.5 0.3 -2; loop: true; dur: 1500; dir: alternate; easing: easeInOutQuad">
-    </a-sphere>
-
-    <!-- Logo torique flottant -->
-    <a-torus 
-      position="0 1.6 -2" 
-      radius="0.35" 
-      radius-tubular="0.045"
-      color="#00ffff"
-      material="emissive: #00ffff; emissiveIntensity: 2.5; shader: flat"
-      animation__rotate="property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear"
-      animation__float="property: position; to: 0 1.9 -2; loop: true; dur: 2000; dir: alternate; easing: easeInOutSine">
-    </a-torus>
+      width="3"
+      color="#ffffff"
+      align="center">
+    </a-text>
 
   </a-marker>
 
-  <!-- Caméra avec paramètres ajustés pour éviter le zoom -->
-  <a-entity camera fov="70" near="0.1" far="10000" zoom="1"></a-entity>
+  <a-entity camera></a-entity>
 
 </a-scene>
 
@@ -215,9 +135,9 @@
   let allVideos = [];
   let currentIndex = 0;
   let videoElement = null;
-  let videoLoaded = false;
   let soundEnabled = true;
 
+  // Charger toutes les vidéos
   async function loadAllVideos() {
     try {
       const response = await fetch(`${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc`, {
@@ -230,7 +150,7 @@
       allVideos = await response.json();
       console.log(`✅ ${allVideos.length} vidéos chargées`);
       
-      document.getElementById('total-videos').textContent = allVideos.length;
+      document.getElementById('total').textContent = allVideos.length;
       
       if (allVideos.length > 0) {
         loadVideo(0);
@@ -240,6 +160,7 @@
     }
   }
 
+  // Charger une vidéo
   function loadVideo(index) {
     if (index < 0 || index >= allVideos.length) return;
     
@@ -251,34 +172,20 @@
     videoElement.muted = !soundEnabled;
     videoElement.load();
     
-    videoElement.addEventListener('loadeddata', () => {
-      console.log('✅ Vidéo prête');
-      videoLoaded = true;
-    }, { once: true });
-    
+    // Mettre à jour l'interface
+    document.getElementById('video-title').textContent = video.title || 'Vidéo UrbainAR';
+    document.getElementById('video-user').textContent = `@${video.user_id}`;
+    document.getElementById('current').textContent = index + 1;
     document.querySelector('#username-text').setAttribute('value', `@${video.user_id}`);
     
-    const date = new Date(video.created_at);
-    const formattedDate = date.toLocaleString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    document.querySelector('#date-text').setAttribute('value', formattedDate);
-    
-    document.querySelector('#views-text').setAttribute('value', `👁️ ${video.view_count}`);
-    document.querySelector('#likes-text').setAttribute('value', `❤️ ${video.like_count}`);
-    
-    document.getElementById('current-video').textContent = index + 1;
-    document.getElementById('video-title').textContent = video.title || 'UrbainAR';
+    // Activer/désactiver les boutons
     document.getElementById('btn-prev').disabled = index === 0;
     document.getElementById('btn-next').disabled = index === allVideos.length - 1;
     
-    console.log(`✅ Vidéo ${index + 1}/${allVideos.length}:`, video.title);
+    console.log(`▶️ Vidéo ${index + 1}/${allVideos.length}`);
   }
 
+  // Navigation
   function nextVideo() {
     if (currentIndex < allVideos.length - 1) {
       loadVideo(currentIndex + 1);
@@ -291,30 +198,34 @@
     }
   }
 
+  // Toggle son
   function toggleSound() {
     soundEnabled = !soundEnabled;
     if (videoElement) {
       videoElement.muted = !soundEnabled;
     }
-    document.getElementById('btn-sound').textContent = soundEnabled ? '🔊 Son ON' : '🔇 Son OFF';
+    const btn = document.getElementById('btn-sound');
+    btn.textContent = soundEnabled ? '🔊' : '🔇';
+    btn.title = soundEnabled ? 'Son ON' : 'Son OFF';
   }
 
+  // Initialisation
   window.addEventListener('load', () => {
     loadAllVideos();
     
     const marker = document.querySelector('#marker');
     
     marker.addEventListener('markerFound', () => {
-      console.log('🎯 Marker détecté !');
-      if (videoElement && videoLoaded) {
+      console.log('🎯 Marker trouvé');
+      if (videoElement) {
         videoElement.play().then(() => {
-          console.log('▶️ Lecture avec son');
+          console.log('✅ Lecture OK');
         }).catch(e => {
-          console.log('⚠️ Autoplay bloqué:', e.message);
+          console.log('⚠️ Autoplay bloqué, désactivation son');
           soundEnabled = false;
           videoElement.muted = true;
           videoElement.play();
-          document.getElementById('btn-sound').textContent = '🔇 Son OFF';
+          document.getElementById('btn-sound').textContent = '🔇';
         });
       }
     });
