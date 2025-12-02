@@ -95,7 +95,7 @@
     #app {
       position: fixed;
       inset: 0;
-      /* NE PAS mettre display:none ici */
+      /* surtout PAS de display:none ici */
     }
 
     /* Infos vidéo en haut */
@@ -208,20 +208,20 @@
         loop
         crossorigin="anonymous"
         playsinline
-        webkit-playsinline
-        muted>
+        webkit-playsinline>
       </video>
     </a-assets>
 
-    <!-- Marker Hiro avec vidéo verticale centrée -->
+    <!-- Marker Hiro affichant la vidéo sur un plan -->
     <a-marker preset="hiro" id="marker" emitevents="true">
-      <a-video
-        src="#video"
+      <a-plane
+        id="video-plane"
+        position="0 0 0"
+        rotation="-90 0 0"
         width="1.5"
         height="0.85"
-        position="0 0 0"
-        rotation="-90 0 0">
-      </a-video>
+        material="shader: flat; src: #video">
+      </a-plane>
     </a-marker>
 
     <a-entity camera></a-entity>
