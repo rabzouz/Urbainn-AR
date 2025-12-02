@@ -196,10 +196,7 @@
   </div>
 
   <!-- Scène AR -->
-  <a-scene
-    embedded
-    arjs="sourceType: webcam; debugUIEnabled: false;"
-    vr-mode-ui="enabled: false">
+  <a-scene embedded vr-mode-ui="enabled: false" renderer="precision: medium; antialias: true" arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
 
     <a-assets>
       <video
