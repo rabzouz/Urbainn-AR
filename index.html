@@ -95,7 +95,7 @@
     #app {
       position: fixed;
       inset: 0;
-      display: none; /* affiché quand scripts + première vidéo ok */
+      /* NE PAS mettre display:none ici */
     }
 
     /* Infos vidéo en haut */
@@ -196,7 +196,11 @@
   </div>
 
   <!-- Scène AR -->
-  <a-scene embedded vr-mode-ui="enabled: false" renderer="precision: medium; antialias: true" arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
+  <a-scene
+    embedded
+    vr-mode-ui="enabled: false"
+    renderer="precision: medium; antialias: true"
+    arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
     <a-assets>
       <video
         id="video"
@@ -204,12 +208,21 @@
         loop
         crossorigin="anonymous"
         playsinline
-        webkit-playsinline>
+        webkit-playsinline
+        muted>
       </video>
     </a-assets>
 
     <!-- Marker Hiro avec vidéo verticale centrée -->
-    <a-marker preset="hiro" id="marker" emitevents="true"> <a-box color="red" width="1" height="1" depth="1" position="0 0 0"></a-box> </a-marker>
+    <a-marker preset="hiro" id="marker" emitevents="true">
+      <a-video
+        src="#video"
+        width="1.5"
+        height="0.85"
+        position="0 0 0"
+        rotation="-90 0 0">
+      </a-video>
+    </a-marker>
 
     <a-entity camera></a-entity>
   </a-scene>
@@ -304,9 +317,8 @@
 
   function hideLoader() {
     const loader = document.getElementById('loader');
-    const app = document.getElementById('app');
     if (loader) loader.style.display = 'none';
-    if (app) app.style.display = 'block';
+    // #app reste visible en permanence
   }
 
   window.addEventListener('load', () => {
