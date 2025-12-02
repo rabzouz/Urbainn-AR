@@ -1,110 +1,231 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <title>UrbainAR - Vidéos</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+  <!-- A-Frame + AR.js -->
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js" defer></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js" defer></script>
+
   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       margin: 0;
       overflow: hidden;
       touch-action: none;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
+      background: #000;
+      color: #fff;
     }
 
-    /* Infos en haut */
+    /* Loader plein écran */
+    #loader {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at top, #1a73e8 0, #000 60%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      text-align: center;
+      padding: 24px;
+    }
+
+    #loader-logo {
+      width: 84px;
+      height: 84px;
+      border-radius: 999px;
+      background: #1a73e8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    #loader-logo-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 999px;
+      background-image: url("ic_menu.png"); /* adapte si besoin */
+      background-size: cover;
+      background-position: center;
+    }
+
+    .loader-spinner {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      animation: spin 1s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    #loader-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    #loader-text {
+      font-size: 14px;
+      opacity: 0.85;
+      max-width: 260px;
+    }
+
+    #loader-hint {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-top: 12px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Conteneur principal AR (scène) */
+    #app {
+      position: fixed;
+      inset: 0;
+      display: none; /* affiché quand scripts + première vidéo ok */
+    }
+
+    /* Infos vidéo en haut */
     #video-info {
       position: fixed;
-      top: 15px;
-      left: 15px;
+      top: 16px;
+      left: 16px;
       background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 10px 14px;
-      border-radius: 10px;
-      z-index: 9999;
-      font-family: Arial, sans-serif;
-      font-size: 14px;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 12px;
+      z-index: 999;
+      font-size: 13px;
+      min-width: 180px;
+      max-width: 260px;
+    }
+
+    #video-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    #video-count {
+      font-size: 12px;
+      opacity: 0.85;
     }
 
     /* Contrôles en bas */
     #video-nav {
       position: fixed;
-      bottom: 20px;
+      bottom: 24px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 9999;
+      z-index: 999;
       display: flex;
-      gap: 15px;
+      gap: 18px;
+      align-items: center;
     }
 
     #video-nav button {
-      width: 55px;
-      height: 55px;
+      width: 56px;
+      height: 56px;
       font-size: 22px;
       background: rgba(0,0,0,0.7);
       color: white;
-      border: 2px solid white;
+      border: 2px solid rgba(255,255,255,0.9);
       border-radius: 50%;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #video-nav button:active {
+      transform: scale(0.96);
     }
 
     #video-nav button:hover {
       background: rgba(255,255,255,0.2);
-      transform: scale(1.08);
+      box-shadow: 0 0 12px rgba(0,0,0,0.6);
     }
 
     #video-nav button:disabled {
-      opacity: 0.3;
+      opacity: 0.35;
       cursor: not-allowed;
+      box-shadow: none;
     }
   </style>
 </head>
 <body>
 
-<!-- Infos vidéo -->
-<div id="video-info">
-  <div id="video-title">Chargement...</div>
-  <div>Vidéo <span id="current">1</span>/<span id="total">0</span></div>
+<!-- Loader -->
+<div id="loader">
+  <div id="loader-logo">
+    <div id="loader-logo-icon"></div>
+  </div>
+  <div class="loader-spinner"></div>
+  <div id="loader-title">UrbainAR WebAR</div>
+  <div id="loader-text">Initialisation de la caméra et chargement des vidéos AR...</div>
+  <div id="loader-hint">Si la caméra ne s’ouvre pas, vérifie les permissions.</div>
 </div>
 
-<!-- Navigation vidéos -->
-<div id="video-nav">
-  <button id="btn-prev" onclick="previousVideo()" title="Vidéo précédente">⬅️</button>
-  <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF">🔊</button>
-  <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante">➡️</button>
+<!-- App AR -->
+<div id="app">
+  <!-- Infos vidéo -->
+  <div id="video-info">
+    <div id="video-title">Chargement...</div>
+    <div id="video-count">Vidéo <span id="current">1</span>/<span id="total">0</span></div>
+  </div>
+
+  <!-- Navigation vidéos -->
+  <div id="video-nav">
+    <button id="btn-prev" onclick="previousVideo()" title="Vidéo précédente">⬅️</button>
+    <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF">🔊</button>
+    <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante">➡️</button>
+  </div>
+
+  <!-- Scène AR -->
+  <a-scene
+    embedded
+    arjs="sourceType: webcam; debugUIEnabled: false;"
+    vr-mode-ui="enabled: false">
+
+    <a-assets>
+      <video
+        id="video"
+        preload="auto"
+        loop
+        crossorigin="anonymous"
+        playsinline
+        webkit-playsinline>
+      </video>
+    </a-assets>
+
+    <!-- Marker Hiro avec vidéo verticale centrée -->
+    <a-marker preset="hiro" id="marker" emitevents="true">
+      <a-video
+        src="#video"
+        width="1.1"
+        height="1.95"
+        position="0 0 0"
+        rotation="-90 0 0">
+      </a-video>
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
 </div>
-
-<a-scene
-  embedded
-  arjs="sourceType: webcam; debugUIEnabled: false;"
-  vr-mode-ui="enabled: false">
-
-  <a-assets>
-    <video
-      id="video"
-      preload="auto"
-      loop
-      crossorigin="anonymous"
-      playsinline
-      webkit-playsinline>
-    </video>
-  </a-assets>
-
-  <!-- Marker Hiro avec vidéo verticale centrée -->
-  <a-marker preset="hiro" id="marker" emitevents="true">
-    <a-video
-      src="#video"
-      width="1.1"
-      height="1.95"
-      position="0 0 0"
-      rotation="-90 0 0">
-    </a-video>
-  </a-marker>
-
-  <a-entity camera></a-entity>
-</a-scene>
 
 <script>
   const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
@@ -114,6 +235,7 @@
   let currentIndex = 0;
   let videoElement = null;
   let soundEnabled = true;
+  let firstVideoLoaded = false;
 
   async function loadAllVideos() {
     try {
@@ -136,9 +258,12 @@
         loadVideo(0);
       } else {
         document.getElementById('video-title').textContent = 'Aucune vidéo';
+        hideLoader();
       }
     } catch (error) {
       console.error('❌ Erreur chargement liste vidéos :', error);
+      document.getElementById('video-title').textContent = 'Erreur de chargement';
+      hideLoader();
     }
   }
 
@@ -153,7 +278,6 @@
     videoElement.muted = !soundEnabled;
     videoElement.load();
 
-    // UI
     document.getElementById('video-title').textContent = video.title || 'Vidéo UrbainAR';
     document.getElementById('current').textContent = index + 1;
 
@@ -161,6 +285,11 @@
     document.getElementById('btn-next').disabled = index === allVideos.length - 1;
 
     console.log(`▶️ Vidéo ${index + 1}/${allVideos.length}`);
+
+    if (!firstVideoLoaded) {
+      firstVideoLoaded = true;
+      hideLoader();
+    }
   }
 
   function nextVideo() {
@@ -185,6 +314,13 @@
     btn.title = soundEnabled ? 'Son ON' : 'Son OFF';
   }
 
+  function hideLoader() {
+    const loader = document.getElementById('loader');
+    const app = document.getElementById('app');
+    if (loader) loader.style.display = 'none';
+    if (app) app.style.display = 'block';
+  }
+
   window.addEventListener('load', () => {
     loadAllVideos();
 
@@ -197,11 +333,15 @@
           .play()
           .then(() => console.log('▶️ Lecture vidéo'))
           .catch((e) => {
-            console.log('⚠️ Autoplay bloqué, mute forcé.');
+            console.log('⚠️ Autoplay bloqué, mute forcé.', e);
             soundEnabled = false;
             videoElement.muted = true;
             videoElement.play();
-            document.getElementById('btn-sound').textContent = '🔇';
+            const btn = document.getElementById('btn-sound');
+            if (btn) {
+              btn.textContent = '🔇';
+              btn.title = 'Son OFF';
+            }
           });
       }
     });
