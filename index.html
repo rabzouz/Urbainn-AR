@@ -19,7 +19,7 @@
       color: #fff;
     }
 
-    /* Infos en haut */
+    /* Infos en haut à gauche */
     #video-info {
       position: fixed;
       top: 15px;
@@ -29,13 +29,52 @@
       padding: 10px 14px;
       border-radius: 10px;
       z-index: 9999;
-      font-size: 14px;
+      font-size: 13px;
+      min-width: 180px;
+      max-width: 260px;
     }
 
     #video-title {
       font-size: 15px;
       font-weight: 600;
       margin-bottom: 2px;
+    }
+
+    #video-meta {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-bottom: 2px;
+    }
+
+    #video-count {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    /* Bouton Fermer en haut à droite */
+    #top-right {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      z-index: 9999;
+    }
+
+    #btn-close {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: none;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #btn-close:active {
+      transform: scale(0.95);
     }
 
     /* Contrôles en bas */
@@ -81,7 +120,13 @@
 <!-- Infos vidéo -->
 <div id="video-info">
   <div id="video-title">Chargement...</div>
-  <div>Vidéo <span id="current">1</span>/<span id="total">0</span></div>
+  <div id="video-meta">par <span id="video-author">UrbainAR</span></div>
+  <div id="video-count">Vidéo <span id="current">1</span>/<span id="total">0</span></div>
+</div>
+
+<!-- Bouton Fermer -->
+<div id="top-right">
+  <button id="btn-close" onclick="closeAr()" title="Fermer l'AR">✕</button>
 </div>
 
 <!-- Navigation vidéos -->
@@ -94,7 +139,8 @@
 <a-scene
   embedded
   arjs="sourceType: webcam; debugUIEnabled: false;"
-  vr-mode-ui="enabled: false">
+  vr-mode-ui="enabled: false"
+  loading-screen="enabled: true; backgroundColor: #000000; dotsColor: #ffffff">
 
   <a-assets>
     <video
@@ -169,7 +215,18 @@
     videoElement.muted = !soundEnabled;
     videoElement.load();
 
+    // Titre
     document.getElementById('video-title').textContent = video.title || 'Vidéo UrbainAR';
+
+    // Auteur : tente user_id, sinon fallback
+    const author =
+      video.user_id ||
+      video.ownerId ||
+      video.owner_id ||
+      'Créateur UrbainAR';
+    document.getElementById('video-author').textContent = author;
+
+    // Compteur
     document.getElementById('current').textContent = index + 1;
 
     document.getElementById('btn-prev').disabled = index === 0;
@@ -198,6 +255,15 @@
     const btn = document.getElementById('btn-sound');
     btn.textContent = soundEnabled ? '🔊' : '🔇';
     btn.title = soundEnabled ? 'Son ON' : 'Son OFF';
+  }
+
+  function closeAr() {
+    // Ferme l’onglet ou revient en arrière (utile quand lancé depuis l’app Android)
+    if (history.length > 1) {
+      history.back();
+    } else {
+      window.close();
+    }
   }
 
   window.addEventListener('load', () => {
