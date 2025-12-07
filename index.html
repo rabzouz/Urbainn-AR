@@ -248,76 +248,80 @@ function createBoardIfNeeded() {
 
   boardGroup = new THREE.Group();
 
-  // Fond légèrement plus grand que la vidéo (noir translucide)
-  const bgGeo = new THREE.PlaneGeometry(1.1, 2.0);
-  const bgMat = new THREE.MeshBasicMaterial({
+  // Panneau arrière noir translucide, visible des deux côtés
+  const backGeo = new THREE.PlaneGeometry(1.2, 2.1);
+  const backMat = new THREE.MeshBasicMaterial({
     color: 0x000000,
     transparent: true,
-    opacity: 0.7
+    opacity: 0.7,
+    side: THREE.DoubleSide
   });
-  const bgPlane = new THREE.Mesh(bgGeo, bgMat);
-  bgPlane.position.set(0, 0, 0);
-  boardGroup.add(bgPlane);
+  const backPanel = new THREE.Mesh(backGeo, backMat);
+  backPanel.position.set(0, 0, 0);
+  boardGroup.add(backPanel);
 
-  // Cadre néon vert/bleu autour de la vidéo : 4 barres fines
+  // Cadre néon 3D tout autour (4 barres en BoxGeometry)
   const frameColor = 0x00f5ff; // cyan néon
+  const frameDepth = 0.03;     // épaisseur en Z
+  const frameThickness = 0.03; // hauteur des barres horizontales / largeur des verticales
+  const frameWidth = 0.98;     // largeur intérieure du cadre
+  const frameHeight = 1.78;    // hauteur intérieure du cadre
+
   const frameMat = new THREE.MeshBasicMaterial({
     color: frameColor,
     transparent: true,
-    opacity: 0.9
+    opacity: 0.95
   });
 
-  const frameThickness = 0.03;
-  const frameWidth = 0.9 + 0.04;
-  const frameHeight = 1.6 + 0.04;
-
   // Barre horizontale haute
-  const topBarGeo = new THREE.PlaneGeometry(frameWidth, frameThickness);
+  const topBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
   const topBar = new THREE.Mesh(topBarGeo, frameMat);
-  topBar.position.set(0, 0.75, 0.02);
+  topBar.position.set(0, frameHeight / 2, frameDepth / 2);
   boardGroup.add(topBar);
 
   // Barre horizontale basse
-  const bottomBarGeo = new THREE.PlaneGeometry(frameWidth, frameThickness);
+  const bottomBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
   const bottomBar = new THREE.Mesh(bottomBarGeo, frameMat);
-  bottomBar.position.set(0, -0.75, 0.02);
+  bottomBar.position.set(0, -frameHeight / 2, frameDepth / 2);
   boardGroup.add(bottomBar);
 
   // Barre verticale gauche
-  const leftBarGeo = new THREE.PlaneGeometry(frameThickness, frameHeight);
+  const leftBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
   const leftBar = new THREE.Mesh(leftBarGeo, frameMat);
-  leftBar.position.set(-frameWidth / 2, 0, 0.02);
+  leftBar.position.set(-frameWidth / 2, 0, frameDepth / 2);
   boardGroup.add(leftBar);
 
   // Barre verticale droite
-  const rightBarGeo = new THREE.PlaneGeometry(frameThickness, frameHeight);
+  const rightBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
   const rightBar = new THREE.Mesh(rightBarGeo, frameMat);
-  rightBar.position.set(frameWidth / 2, 0, 0.02);
+  rightBar.position.set(frameWidth / 2, 0, frameDepth / 2);
   boardGroup.add(rightBar);
 
-  // Plane vidéo portrait 9:16 (légèrement plus bas pour laisser la place au bandeau texte en haut)
+  // Plane vidéo portrait 9:16 (au centre du cadre)
   const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
   const videoMat = new THREE.MeshBasicMaterial({
     map: videoTexture,
     side: THREE.DoubleSide
   });
   videoPlane = new THREE.Mesh(videoGeo, videoMat);
-  videoPlane.position.set(0, -0.1, 0.01); // décalé un peu vers le bas
+  videoPlane.position.set(0, -0.1, 0.02); // léger décalage vers le bas
   boardGroup.add(videoPlane);
 
-  // Plane infos (bandeau texte) AU-DESSUS de la vidéo
+  // Bandeau infos AU-DESSUS de la vidéo, à l'intérieur du cadre
   const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
   infoTexture = new THREE.CanvasTexture(infoCanvas);
   const infoMat = new THREE.MeshBasicMaterial({
     map: infoTexture,
-    transparent: true
+    transparent: true,
+    side: THREE.DoubleSide
   });
   infoPlane = new THREE.Mesh(infoGeo, infoMat);
-  infoPlane.position.set(0, 0.95, 0.01); // AU-DESSUS de la vidéo
+  infoPlane.position.set(0, 0.95, 0.02);
   boardGroup.add(infoPlane);
 
   scene.add(boardGroup);
 }
+
 
 
   function onSelect() {
