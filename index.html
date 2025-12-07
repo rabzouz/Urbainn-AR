@@ -165,26 +165,27 @@
   <a-assets>
     <!-- src par défaut pour éviter les warnings et le timeout A‑Frame -->
     <video
-      id="video"
-      src="https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-videos/video_fa967c31-9e06-47c1-849f-e94b9a1b4430.mp4"
-      preload="auto"
-      loop
-      crossorigin="anonymous"
-      playsinline
-      webkit-playsinline>
-    </video>
-  </a-assets>
+  id="video"
+  src="https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-videos/video_fa967c31-9e06-47c1-849f-e94b9a1b4430.mp4"
+  preload="auto"
+  loop
+  crossorigin="anonymous"
+  playsinline
+  webkit-playsinline>
+</video>
+
 
   <!-- Marker HIRO qui affiche la vidéo Supabase courante -->
   <a-marker type="pattern" preset="hiro">
-    <a-plane
-      position="0 0.4 0.2"
-      rotation="-70 0 0"
-      width="0.9"
-      height="1.6"
-      material="src: #video; shader: flat;">
-    </a-plane>
-  </a-marker>
+  <a-plane
+    position="0 0 0"
+    rotation="-90 0 0"
+    width="0.9"
+    height="1.6"
+    material="src: #video; shader: flat;">
+  </a-plane>
+</a-marker>
+
 
   <!-- Caméra simple (pas GPS pour ce test) -->
   <a-entity camera></a-entity>
@@ -198,6 +199,19 @@
   let currentIndex = -1;   // index de la vidéo actuellement sélectionnée
   let videoElement = null;
   let soundEnabled = true;
+
+   // Boucle douce : si le loop natif fait un petit blanc, on force le restart
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!videoElement) {
+      videoElement = document.querySelector('#video');
+    }
+    if (videoElement) {
+      videoElement.addEventListener('ended', () => {
+        videoElement.currentTime = 0;
+        videoElement.play().catch(() => {});
+      });
+    }
+  });
 
   async function loadAllVideos() {
     try {
