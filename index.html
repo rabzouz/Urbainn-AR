@@ -5,7 +5,7 @@
   <title>UrbainAR - Vidéos près de vous</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-  <!-- A-Frame + AR.js location-based -->
+  <!-- A-Frame + AR.js -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
@@ -139,8 +139,8 @@
 <!-- Top bar infos vidéo sélectionnée -->
 <div id="video-info">
   <div id="video-title">Chargement de la vidéo...</div>
-  <div id="video-meta">Pointe ton téléphone vers l'endroit de la vidéo.</div>
-  <div id="video-count">1 vidéo à cet endroit</div>
+  <div id="video-meta">La vidéo s'affiche devant toi en AR.</div>
+  <div id="video-count">1 vidéo en cours</div>
 </div>
 
 <!-- Bouton Fermer -->
@@ -148,7 +148,7 @@
   <button id="btn-close" onclick="closeAr()" title="Fermer l'AR">✕</button>
 </div>
 
-<!-- Navigation (ici, une seule vidéo envoyée par l'app, donc flèches désactivées) -->
+<!-- Navigation (une seule vidéo, flèches désactivées) -->
 <div id="video-nav">
   <button id="btn-prev" onclick="previousVideo()" title="Vidéo précédente" disabled>⬅️</button>
   <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF">🔊</button>
@@ -160,15 +160,12 @@
   vr-mode-ui="enabled: false"
   renderer="precision: medium; antialias: true"
   loading-screen="enabled: true; backgroundColor: #000000; dotsColor: #1a73e8"
-  cursor="rayOrigin: mouse; fuse: false"
-  raycaster="objects: a-entity"
   arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false">
 
-  <!-- Caméra géolocalisée -->
+  <!-- Caméra (on garde gps-new-camera pour plus tard si tu veux le GPS) -->
   <a-camera gps-new-camera="gpsMinDistance: 5" rotation-reader></a-camera>
 
   <a-assets>
-    <!-- src par défaut pour éviter les warnings et le timeout A‑Frame -->
     <video
       id="video"
       src=""
@@ -180,26 +177,24 @@
     </video>
   </a-assets>
 
-  <!-- Les entités GPS seront ajoutées en JS -->
+  <!-- Écran vidéo toujours visible devant la caméra -->
+  <a-entity id="video-container" position="0 1.5 -3">
+    <a-plane
+      width="0.9"
+      height="1.6"
+      material="src: #video; shader: flat;">
+    </a-plane>
+  </a-entity>
+
 </a-scene>
 
 <script>
-  const SUPABASE_URL = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
-
-  let allVideos = [];      // ici : 1 vidéo envoyée par l'app, mais on garde la structure
-  let currentIndex = -1;
   let videoElement = null;
   let soundEnabled = true;
-  let gpsReady = false;
-  let targetLat = null;
-  let targetLng = null;
 
   // Boucle douce
   document.addEventListener('DOMContentLoaded', () => {
-    if (!videoElement) {
-      videoElement = document.querySelector('#video');
-    }
+    videoElement = document.querySelector('#video');
     if (videoElement) {
       videoElement.addEventListener('ended', () => {
         videoElement.currentTime = 0;
@@ -208,145 +203,31 @@
     }
   });
 
-  // Lecture des paramètres ?video, lat, lng
-  function parseUrlParams() {
+  // Lecture du paramètre ?video= depuis l'app Android
+  function parseUrlParamsAndLoad() {
     const params = new URLSearchParams(window.location.search);
     const videoUrl = params.get('video');
-    const lat = parseFloat(params.get('lat'));
-    const lng = parseFloat(params.get('lng'));
 
-    if (!videoUrl || isNaN(lat) || isNaN(lng)) {
-      document.getElementById('video-title').textContent = "Paramètres AR manquants";
-      console.error("Paramètres URL invalides", videoUrl, lat, lng);
+    if (!videoUrl) {
+      document.getElementById('video-title').textContent = "Paramètre vidéo manquant";
+      console.error("Paramètre ?video manquant dans l'URL");
       return;
     }
-
-    targetLat = lat;
-    targetLng = lng;
-
-    allVideos = [{
-      video_url: videoUrl,
-      latitude: lat,
-      longitude: lng,
-      title: "Vidéo UrbainAR",
-      user_id: "Créateur UrbainAR"
-    }];
-
-    document.getElementById('video-count').textContent = '1 vidéo à cet endroit';
-    loadVideo(0);
-  }
-
-  function preloadVideo(url) {
-    const preloader = document.createElement('video');
-    preloader.src = url;
-    preloader.preload = 'auto';
-    preloader.muted = true;
-  }
-
-  function placeVideoEntities() {
-    const scene = document.querySelector('a-scene');
-    if (!scene || allVideos.length === 0) return;
-
-    allVideos.forEach((video, index) => {
-      if (!video.latitude || !video.longitude) return;
-
-      const entity = document.createElement('a-entity');
-
-      entity.setAttribute('gps-new-entity-place', {
-        latitude: video.latitude,
-        longitude: video.longitude
-      });
-
-      // Pin simple
-      const pin = document.createElement('a-entity');
-      pin.setAttribute('geometry', {
-        primitive: 'cylinder',
-        radius: 0.5,
-        height: 2
-      });
-      pin.setAttribute('material', { color: '#1a73e8' });
-      pin.setAttribute('position', '0 1 0');
-
-      const head = document.createElement('a-sphere');
-      head.setAttribute('radius', 0.7);
-      head.setAttribute('color', '#ffffff');
-      head.setAttribute('position', '0 2 0');
-
-      const label = document.createElement('a-text');
-      label.setAttribute('value', video.title || 'Vidéo UrbainAR');
-      label.setAttribute('align', 'center');
-      label.setAttribute('color', '#ffffff');
-      label.setAttribute('position', '0 3 0');
-      label.setAttribute('scale', '8 8 8');
-      label.setAttribute('look-at', '[gps-new-camera]');
-
-      // Écran vidéo portrait 9:16 devant le pin
-      const screen = document.createElement('a-plane');
-      screen.setAttribute('width', 0.9);
-      screen.setAttribute('height', 1.6);
-      screen.setAttribute('position', '0 2.5 -5');
-      screen.setAttribute('material', {
-        src: '#video',
-        shader: 'flat',
-        transparent: true
-      });
-
-      entity.appendChild(pin);
-      entity.appendChild(head);
-      entity.appendChild(label);
-      entity.appendChild(screen);
-
-      entity.addEventListener('click', () => {
-        console.log('📍 Pin vidéo cliqué, index', index);
-        loadVideo(index);
-        playCurrentVideo();
-      });
-
-      scene.appendChild(entity);
-    });
-
-    if (allVideos.length > 0) {
-      loadVideo(0);
-    }
-  }
-
-  function loadVideo(index) {
-    if (index < 0 || index >= allVideos.length) return;
 
     if (!videoElement) {
       videoElement = document.querySelector('#video');
     }
 
-    try {
-      videoElement.pause();
-      videoElement.currentTime = 0;
-    } catch (e) {}
-
-    currentIndex = index;
-    const video = allVideos[index];
-
-    videoElement.src = video.video_url;
+    // Charger la vidéo envoyée par l'app (Supabase)
+    videoElement.src = videoUrl;
     videoElement.muted = !soundEnabled;
     videoElement.load();
 
-    document.getElementById('video-title').textContent =
-      video.title || 'Vidéo UrbainAR';
+    document.getElementById('video-title').textContent = 'Vidéo UrbainAR';
+    document.getElementById('video-meta').textContent = 'Vidéo depuis UrbainAR';
+    document.getElementById('video-count').textContent = '1 vidéo en cours';
 
-    const author =
-      video.user_id ||
-      video.ownerId ||
-      video.owner_id ||
-      video.author ||
-      'Créateur UrbainAR';
-    document.getElementById('video-meta').textContent = 'par ' + author;
-
-    document.getElementById('video-count').textContent =
-      'Vidéo ' + (index + 1) + '/' + allVideos.length;
-
-    document.getElementById('btn-prev').disabled = true;
-    document.getElementById('btn-next').disabled = true;
-
-    console.log(`▶️ Vidéo ${index + 1}/${allVideos.length}`);
+    console.log('▶️ Vidéo chargée depuis URL param');
   }
 
   function playCurrentVideo() {
@@ -359,7 +240,7 @@
         console.log('⚠️ Autoplay bloqué, mute forcé.', e);
         soundEnabled = false;
         videoElement.muted = true;
-        videoElement.play();
+        videoElement.play().catch(() => {});
         const btn = document.getElementById('btn-sound');
         if (btn) {
           btn.textContent = '🔇';
@@ -369,11 +250,11 @@
   }
 
   function nextVideo() {
-    // Gardé pour compat future multi-vidéos, désactivé ici
+    // pas utilisé ici (1 seule vidéo)
   }
 
   function previousVideo() {
-    // Gardé pour compat future multi-vidéos, désactivé ici
+    // pas utilisé ici (1 seule vidéo)
   }
 
   function toggleSound() {
@@ -405,20 +286,8 @@
   }, { once: true });
 
   window.onload = () => {
-    parseUrlParams();
-
-    const cam = document.querySelector('[gps-new-camera]');
-    cam.addEventListener('gps-camera-update-position', (e) => {
-      console.log(
-        '📡 Position GPS :',
-        e.detail.position.latitude,
-        e.detail.position.longitude
-      );
-      if (!gpsReady) {
-        gpsReady = true;
-        placeVideoEntities();
-      }
-    });
+    parseUrlParamsAndLoad();
+    playCurrentVideo();
   };
 </script>
 
