@@ -226,7 +226,7 @@
     }
   }
 
-  // Ajoute un pin AR pour chaque vidéo autour de l'utilisateur
+  // Ajoute un pin AR + écran vidéo pour chaque vidéo autour de l'utilisateur
   function placeVideoEntities() {
     const scene = document.querySelector('a-scene');
     if (!scene || allVideos.length === 0) return;
@@ -265,9 +265,21 @@
       label.setAttribute('scale', '8 8 8');
       label.setAttribute('look-at', '[gps-new-camera]');
 
+      // Écran vidéo devant le pin (affiche #video, donc la vidéo courante)
+      const screen = document.createElement('a-plane');
+      screen.setAttribute('width', 4);
+      screen.setAttribute('height', 2.25);
+      screen.setAttribute('position', '0 2.5 -5');  // devant le pin
+      screen.setAttribute('material', {
+        src: '#video',
+        shader: 'flat',
+        transparent: true
+      });
+
       entity.appendChild(pin);
       entity.appendChild(head);
       entity.appendChild(label);
+      entity.appendChild(screen);
 
       // Quand on clique sur le pin → charger/lecture de la vidéo
       entity.addEventListener('click', () => {
