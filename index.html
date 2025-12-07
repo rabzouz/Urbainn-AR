@@ -111,13 +111,6 @@
       opacity: 0.35;
       cursor: not-allowed;
     }
-
-    #xr-button {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 10;
-    }
   </style>
 </head>
 <body>
@@ -150,8 +143,6 @@
   crossorigin="anonymous"
   style="display:none">
 </video>
-
-<div id="xr-button"></div>
 
 <script type="module">
   import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
@@ -195,12 +186,16 @@
     reticle.visible = false;
     scene.add(reticle);
 
-    // Bouton WebXR
-const arButton = ARButton.createButton(renderer, {
-  requiredFeatures: ['hit-test']
-});
-document.body.appendChild(arButton); // bouton centré en bas par défaut
-
+    // Bouton WebXR : centré et plus haut que la barre du bas
+    const arButton = ARButton.createButton(renderer, {
+      requiredFeatures: ['hit-test']
+    });
+    arButton.style.position = 'fixed';
+    arButton.style.left = '50%';
+    arButton.style.transform = 'translateX(-50%)';
+    arButton.style.bottom = '110px';   // plus haut que les boutons en bas
+    arButton.style.zIndex = '11';
+    document.body.appendChild(arButton);
 
     // Session AR
     renderer.xr.addEventListener('sessionstart', async () => {
