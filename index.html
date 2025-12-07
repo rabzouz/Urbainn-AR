@@ -307,7 +307,7 @@ function createBoardIfNeeded() {
   videoPlane.position.set(0, -0.1, 0.02); // léger décalage vers le bas
   boardGroup.add(videoPlane);
 
-  // Bandeau infos AU-DESSUS de la vidéo, à l'intérieur du cadre
+  // Bandeau infos AU-DESSUS de la vidéo, au-dessus de la barre néon
   const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
   infoTexture = new THREE.CanvasTexture(infoCanvas);
   const infoMat = new THREE.MeshBasicMaterial({
@@ -316,8 +316,12 @@ function createBoardIfNeeded() {
     side: THREE.DoubleSide
   });
   infoPlane = new THREE.Mesh(infoGeo, infoMat);
-  infoPlane.position.set(0, 0.95, 0.02);
+
+  // y = 1.15 -> bas du bandeau à 0.95, donc au-dessus de la barre néon (qui monte jusqu'à ~0.905)
+  // z = 0.04 -> un peu plus devant que le cadre (frameDepth/2 = 0.015)
+  infoPlane.position.set(0, 1.15, 0.04);
   boardGroup.add(infoPlane);
+
 
   scene.add(boardGroup);
 }
