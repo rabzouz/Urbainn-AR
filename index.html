@@ -160,14 +160,18 @@
   vr-mode-ui="enabled: false"
   renderer="precision: medium; antialias: true"
   loading-screen="enabled: true; backgroundColor: #000000; dotsColor: #1a73e8"
-  arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
+  cursor="rayOrigin: mouse; fuse: false"
+  raycaster="objects: a-entity"
+  arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false">
 
   <!-- Caméra géolocalisée -->
   <a-camera gps-new-camera="gpsMinDistance: 5" rotation-reader></a-camera>
 
-<a-assets>
+  <a-assets>
+    <!-- src par défaut pour éviter les warnings et le timeout A‑Frame -->
     <video
       id="video"
+      src="https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-videos/video_fa967c31-9e06-47c1-849f-e94b9a1b4430.mp4"
       preload="auto"
       loop
       crossorigin="anonymous"
@@ -175,7 +179,6 @@
       webkit-playsinline>
     </video>
   </a-assets>
-
 
   <!-- Les entités GPS seront ajoutées en JS -->
 </a-scene>
@@ -222,7 +225,6 @@
       document.getElementById('video-title').textContent = 'Erreur de chargement';
     }
   }
-
 
   // Ajoute un pin AR pour chaque vidéo autour de l'utilisateur
   function placeVideoEntities() {
@@ -369,6 +371,16 @@
       window.close();
     }
   }
+
+  // Fallback : premier tap écran → autoriser play() sur mobile
+  window.addEventListener('click', () => {
+    if (!videoElement) {
+      videoElement = document.querySelector('#video');
+    }
+    if (videoElement && videoElement.paused) {
+      videoElement.play().catch(() => {});
+    }
+  }, { once: true });
 
   window.onload = () => {
     // 1) Chargement des vidéos
