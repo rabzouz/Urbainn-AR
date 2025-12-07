@@ -196,10 +196,11 @@
     scene.add(reticle);
 
     // Bouton WebXR
-    const arButton = ARButton.createButton(renderer, {
-      requiredFeatures: ['hit-test']
-    });
-    document.getElementById('xr-button').appendChild(arButton);
+const arButton = ARButton.createButton(renderer, {
+  requiredFeatures: ['hit-test']
+});
+document.body.appendChild(arButton); // bouton centré en bas par défaut
+
 
     // Session AR
     renderer.xr.addEventListener('sessionstart', async () => {
