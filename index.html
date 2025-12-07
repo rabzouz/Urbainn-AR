@@ -156,11 +156,23 @@
   let videoElement = null;
   let videoTexture = null;
   let soundEnabled = true;
-  let videoPlane = null;
 
-  // Liste des vidéos au même endroit
-  let videos = [];      // array d'URLs
-  let currentIndex = 0; // index de la vidéo affichée
+  // Panneau 3D : group global (fond + vidéo + bandeau infos)
+  let boardGroup = null;
+  let videoPlane = null;
+  let infoPlane = null;
+  let infoTexture = null;
+  let infoCanvas = null;
+  let infoCtx = null;
+
+  // Liste des vidéos et métadonnées
+  let videos = [];          // URLs
+  let currentIndex = 0;
+
+  let usernames = [];
+  let dates = [];
+  let likesList = [];
+  let viewsList = [];
 
   function init() {
     scene = new THREE.Scene();
@@ -193,7 +205,7 @@
     arButton.style.position = 'fixed';
     arButton.style.left = '50%';
     arButton.style.transform = 'translateX(-50%)';
-    arButton.style.bottom = '110px';   // plus haut que les boutons en bas
+    arButton.style.bottom = '110px';   // au-dessus des boutons bas
     arButton.style.zIndex = '11';
     document.body.appendChild(arButton);
 
@@ -217,6 +229,8 @@
 
     parseUrlParamsAndLoadVideos();
     setupVideoElement();
+    setupInfoCanvas();
+
     if (videos.length > 0) {
       loadVideo(0);
       playCurrentVideo();
@@ -229,36 +243,68 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
+  function createBoardIfNeeded() {
+    if (boardGroup) return;
+
+    boardGroup = new THREE.Group();
+
+    // Fond légèrement plus grand que la vidéo
+    const bgGeo = new THREE.PlaneGeometry(1.1, 2.0);
+    const bgMat = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.7
+    });
+    const bgPlane = new THREE.Mesh(bgGeo, bgMat);
+    bgPlane.position.set(0, 0, 0);
+    boardGroup.add(bgPlane);
+
+    // Plane vidéo portrait 9:16, un peu plus haut
+    const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
+    const videoMat = new THREE.MeshBasicMaterial({
+      map: videoTexture,
+      side: THREE.DoubleSide
+    });
+    videoPlane = new THREE.Mesh(videoGeo, videoMat);
+    videoPlane.position.set(0, 0.15, 0.01); // légèrement devant le fond
+    boardGroup.add(videoPlane);
+
+    // Plane infos (bandeau texte) sous la vidéo
+    const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
+    infoTexture = new THREE.CanvasTexture(infoCanvas);
+    const infoMat = new THREE.MeshBasicMaterial({
+      map: infoTexture,
+      transparent: true
+    });
+    infoPlane = new THREE.Mesh(infoGeo, infoMat);
+    infoPlane.position.set(0, -0.85, 0.01);
+    boardGroup.add(infoPlane);
+
+    scene.add(boardGroup);
+  }
+
   function onSelect() {
     if (!reticle.visible || !videoTexture) return;
 
-    if (!videoPlane) {
-      const geometry = new THREE.PlaneGeometry(0.9, 1.6);
-      const material = new THREE.MeshBasicMaterial({
-        map: videoTexture,
-        side: THREE.DoubleSide
-      });
-      videoPlane = new THREE.Mesh(geometry, material);
-      scene.add(videoPlane);
-    }
+    createBoardIfNeeded();
 
-    // Position
-    videoPlane.position.setFromMatrixPosition(reticle.matrix);
+    // Positionner le panneau 3D sur la pose détectée
+    boardGroup.position.setFromMatrixPosition(reticle.matrix);
 
     // Orientation : panneau vertical, pivot Y uniquement
     const camPos = new THREE.Vector3();
     camera.getWorldPosition(camPos);
 
     const objPos = new THREE.Vector3();
-    videoPlane.getWorldPosition(objPos);
+    boardGroup.getWorldPosition(objPos);
 
     const dir = new THREE.Vector3().subVectors(camPos, objPos);
     const angleY = Math.atan2(dir.x, dir.z);
 
-    videoPlane.rotation.set(0, angleY, 0);
+    boardGroup.rotation.set(0, angleY, 0);
   }
 
-  // ------- Gestion des vidéos multiples -------
+  // ------- Gestion des vidéos + métadonnées -------
 
   function parseUrlParamsAndLoadVideos() {
     const params = new URLSearchParams(window.location.search);
@@ -276,13 +322,32 @@
       }
     }
 
+    // Métadonnées parallèles (même nombre que videos) - optionnel
+    usernames = parseListParam(params.get('usernames'), videos.length, 'Utilisateur');
+    dates = parseListParam(params.get('dates'), videos.length, 'Date inconnue');
+    likesList = parseNumberListParam(params.get('likes'), videos.length, 0);
+    viewsList = parseNumberListParam(params.get('views'), videos.length, 0);
+
     document.getElementById('video-count').textContent =
       videos.length > 0
         ? `Vidéo 1/${videos.length}`
         : 'Aucune vidéo';
 
-    // Activer / désactiver les flèches
     updateNavButtonsState();
+  }
+
+  function parseListParam(param, targetLength, defaultValue) {
+    if (!param) return new Array(targetLength).fill(defaultValue);
+    const arr = param.split(',').map(v => v.trim());
+    while (arr.length < targetLength) arr.push(defaultValue);
+    return arr.slice(0, targetLength);
+  }
+
+  function parseNumberListParam(param, targetLength, defaultValue) {
+    if (!param) return new Array(targetLength).fill(defaultValue);
+    const arr = param.split(',').map(v => parseInt(v.trim(), 10) || defaultValue);
+    while (arr.length < targetLength) arr.push(defaultValue);
+    return arr.slice(0, targetLength);
   }
 
   function setupVideoElement() {
@@ -296,6 +361,64 @@
 
     videoTexture = new THREE.VideoTexture(videoElement);
     videoTexture.encoding = THREE.sRGBEncoding;
+  }
+
+  function setupInfoCanvas() {
+    infoCanvas = document.createElement('canvas');
+    infoCanvas.width = 512;
+    infoCanvas.height = 256;
+    infoCtx = infoCanvas.getContext('2d');
+    drawInfoText(0); // initial
+  }
+
+  function drawInfoText(index) {
+    if (!infoCtx) return;
+
+    const username = usernames[index] || 'Utilisateur';
+    const date = dates[index] || 'Date inconnue';
+    const likes = likesList[index] ?? 0;
+    const views = viewsList[index] ?? 0;
+
+    infoCtx.clearRect(0, 0, infoCanvas.width, infoCanvas.height);
+
+    // Fond arrondi sombre
+    infoCtx.fillStyle = 'rgba(0,0,0,0.75)';
+    const r = 28;
+    const w = infoCanvas.width - 40;
+    const h = infoCanvas.height - 40;
+    const x = 20;
+    const y = 20;
+    infoCtx.beginPath();
+    infoCtx.moveTo(x + r, y);
+    infoCtx.lineTo(x + w - r, y);
+    infoCtx.quadraticCurveTo(x + w, y, x + w, y + r);
+    infoCtx.lineTo(x + w, y + h - r);
+    infoCtx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    infoCtx.lineTo(x + r, y + h);
+    infoCtx.quadraticCurveTo(x, y + h, x, y + h - r);
+    infoCtx.lineTo(x, y + r);
+    infoCtx.quadraticCurveTo(x, y, x + r, y);
+    infoCtx.closePath();
+    infoCtx.fill();
+
+    infoCtx.fillStyle = '#ffffff';
+    infoCtx.font = 'bold 32px system-ui';
+    infoCtx.textBaseline = 'top';
+
+    infoCtx.fillText(username, 40, 40);
+
+    infoCtx.font = '24px system-ui';
+    infoCtx.fillStyle = '#cccccc';
+    infoCtx.fillText(date, 40, 86);
+
+    infoCtx.fillStyle = '#ffffff';
+    infoCtx.font = '26px system-ui';
+    infoCtx.fillText(`❤️ ${likes}`, 40, 140);
+    infoCtx.fillText(`👁 ${views}`, 220, 140);
+
+    if (infoTexture) {
+      infoTexture.needsUpdate = true;
+    }
   }
 
   function loadVideo(index) {
@@ -322,6 +445,7 @@
     document.getElementById('video-count').textContent =
       `Vidéo ${index + 1}/${videos.length}`;
 
+    drawInfoText(index);
     updateNavButtonsState();
 
     console.log('▶️ Vidéo chargée index', index, url);
