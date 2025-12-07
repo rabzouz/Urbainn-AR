@@ -331,27 +331,30 @@
     infoPlane.position.set(0, 1.15, 0.04);
     boardGroup.add(infoPlane);
 
-    // Logo UrbainAR sur le côté droit
-    const logoWidth = 0.35;
-    const logoHeight = 0.35;
-    const logoGeo = new THREE.PlaneGeometry(logoWidth, logoHeight);
+  // Logo UrbainAR sur le côté droit
+const logoWidth = 0.35;
+const logoHeight = 0.35;
+const logoGeo = new THREE.PlaneGeometry(logoWidth, logoHeight);
 
-    const logoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/logo-urbainar.png';
-    const logoTexture = new THREE.TextureLoader().load(logoUrl);
+// URL publique Supabase de ton logo
+const logoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/logoUrbainar.png';
 
-    const logoMat = new THREE.MeshBasicMaterial({
-      map: logoTexture,
-      transparent: true,
-      side: THREE.DoubleSide
-    });
+const logoTexture = new THREE.TextureLoader().load(logoUrl);
 
-    const logoPlane = new THREE.Mesh(logoGeo, logoMat);
-    logoPlane.position.set(
-      frameWidth / 2 + logoWidth / 2 + 0.1, // à droite du cadre
-      0.0,                                   // centré verticalement
-      0.05                                   // un peu devant le panneau
-    );
-    boardGroup.add(logoPlane);
+const logoMat = new THREE.MeshBasicMaterial({
+  map: logoTexture,
+  transparent: true,
+  side: THREE.DoubleSide
+});
+
+const logoPlane = new THREE.Mesh(logoGeo, logoMat);
+logoPlane.position.set(
+  frameWidth / 2 + logoWidth / 2 + 0.1,
+  0.0,
+  0.05
+);
+boardGroup.add(logoPlane);
+
 
     scene.add(boardGroup);
   }
