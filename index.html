@@ -364,11 +364,13 @@
     });
 
     const logoPlane = new THREE.Mesh(logoGeo, logoMat);
-    logoPlane.position.set(
-      0,                                        // centré
-      frameHeight / 2 + logoHeight / 2 + 0.08, // au-dessus du cadre
-      0.06                                      // légèrement devant
-    );
+// Place le logo à droite, au niveau du bandeau nom/date (infoPlane)
+logoPlane.position.set(
+  0.9 / 2 + logoWidth / 2 + 0.08, // à droite du bandeau (même largeur que infoPlane = 0.9)
+  1.15,                           // même hauteur Y que infoPlane
+  0.06                            // légèrement devant le panneau
+);
+
     boardGroup.add(logoPlane);
 
     scene.add(boardGroup);
