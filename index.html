@@ -5,10 +5,6 @@
   <title>UrbainAR - WebXR AR</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-  <!-- Three.js + ARButton (WebXR) -->
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.160.0/examples/jsm/webxr/ARButton.js"></script>
-
   <style>
     body {
       margin: 0;
@@ -124,7 +120,7 @@
 <!-- UI overlay -->
 <div id="video-info">
   <div id="video-title">Chargement de la vidéo...</div>
-  <div id="video-meta">WebXR AR : cherche un sol puis tape pour placer l'écran.</div>
+  <div id="video-meta">WebXR AR : tape pour placer l'écran vidéo sur le sol.</div>
   <div id="video-count">1 vidéo en cours</div>
 </div>
 
@@ -150,20 +146,22 @@
 
 <div id="xr-button"></div>
 
-<script>
+<script type="module">
+  import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+  import { ARButton } from 'https://unpkg.com/three@0.160.0/examples/jsm/webxr/ARButton.js';
+
   let camera, scene, renderer;
   let reticle;
   let hitTestSource = null;
   let hitTestSourceRequested = false;
-  let xrSession = null;
 
   let videoElement = null;
   let videoTexture = null;
   let soundEnabled = true;
   let videoPlane = null;
 
-  // 1) Initialisation Three.js
-  function initThree() {
+  function init() {
+    // --- Three.js de base ---
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera(
@@ -179,39 +177,42 @@
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // Réticule (anneau) pour montrer la position du hit-test
-    const ringGeo = new THREE.RingGeometry(0.05, 0.06, 32);
+    // Réticule (comme l’exemple officiel three.js) [web:253]
+    const ringGeo = new THREE.RingGeometry(0.05, 0.06, 32).rotateX(-Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     reticle = new THREE.Mesh(ringGeo, ringMat);
-    reticle.rotation.x = -Math.PI / 2;
+    reticle.matrixAutoUpdate = false;
     reticle.visible = false;
     scene.add(reticle);
 
-    // Bouton WebXR (AR)
+    // Bouton WebXR
     const arButton = ARButton.createButton(renderer, {
-      requiredFeatures: ['hit-test'],
-      optionalFeatures: ['dom-overlay'],
-      domOverlay: { root: document.body }
+      requiredFeatures: ['hit-test']
     });
     document.getElementById('xr-button').appendChild(arButton);
 
-    // Quand une session AR démarre
-    renderer.xr.addEventListener('sessionstart', (ev) => {
-      xrSession = renderer.xr.getSession();
-      setupHitTestSource();
-      xrSession.addEventListener('select', onSelect);
-    });
+    // Session AR
+    renderer.xr.addEventListener('sessionstart', async () => {
+      const session = renderer.xr.getSession();
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+      hitTestSourceRequested = true;
 
-    // Quand la session se termine
-    renderer.xr.addEventListener('sessionend', () => {
-      xrSession = null;
-      hitTestSourceRequested = false;
-      hitTestSource = null;
+      session.addEventListener('end', () => {
+        hitTestSourceRequested = false;
+        hitTestSource = null;
+      });
+
+      // Geste "tap" = place/maj l'écran vidéo
+      session.addEventListener('select', onSelect);
     });
 
     window.addEventListener('resize', onWindowResize);
-
     renderer.setAnimationLoop(render);
+
+    // Charger la vidéo depuis ?video=
+    parseUrlParamsAndLoadVideo();
+    playCurrentVideo();
   }
 
   function onWindowResize() {
@@ -220,43 +221,29 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  // 2) Hit-test WebXR (pose du sol) [tap écran + plane 3D]
-  async function setupHitTestSource() {
-    if (hitTestSourceRequested) return;
-    const session = renderer.xr.getSession();
-    if (!session) return;
-
-    const viewerSpace = await session.requestReferenceSpace('viewer');
-    hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-
-    session.addEventListener('end', () => {
-      hitTestSourceRequested = false;
-      hitTestSource = null;
-    });
-
-    hitTestSourceRequested = true;
-  }
-
   function onSelect() {
-    // Quand l'utilisateur tape, si le reticle est visible → placer/mettre à jour l'écran vidéo
     if (!reticle.visible || !videoTexture) return;
 
     if (!videoPlane) {
-      // Plane 1080x1920 → ratio 9:16 (on prend largeur 0.9, hauteur 1.6)
+      // Plane 1080x1920 → ratio 9:16
       const geometry = new THREE.PlaneGeometry(0.9, 1.6);
-      const material = new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide });
+      const material = new THREE.MeshBasicMaterial({
+        map: videoTexture,
+        side: THREE.DoubleSide
+      });
       videoPlane = new THREE.Mesh(geometry, material);
       scene.add(videoPlane);
     }
 
+    // Placer l’écran à la position du reticle
     videoPlane.position.setFromMatrixPosition(reticle.matrix);
-    // orienter le plane vers la caméra
+
+    // Orienter l’écran vers la caméra
     const camPos = new THREE.Vector3();
     camera.getWorldPosition(camPos);
     videoPlane.lookAt(camPos);
   }
 
-  // 3) Chargement de la vidéo depuis ?video=
   function parseUrlParamsAndLoadVideo() {
     const params = new URLSearchParams(window.location.search);
     const videoUrl = params.get('video');
@@ -282,7 +269,7 @@
     videoTexture.encoding = THREE.sRGBEncoding;
 
     document.getElementById('video-title').textContent = 'Vidéo UrbainAR';
-    document.getElementById('video-meta').textContent = 'Tape sur le sol pour placer la vidéo.';
+    document.getElementById('video-meta').textContent = 'Bouge un peu, attends le réticule vert, puis tape pour placer la vidéo.';
     document.getElementById('video-count').textContent = '1 vidéo en cours';
 
     console.log('▶️ Vidéo chargée pour WebXR AR');
@@ -306,7 +293,8 @@
       });
   }
 
-  function toggleSound() {
+  // Toggle son
+  window.toggleSound = function () {
     soundEnabled = !soundEnabled;
     if (videoElement) {
       videoElement.muted = !soundEnabled;
@@ -314,20 +302,27 @@
     const btn = document.getElementById('btn-sound');
     btn.textContent = soundEnabled ? '🔊' : '🔇';
     btn.title = soundEnabled ? 'Son ON' : 'Son OFF';
-  }
+  };
 
-  function closeAr() {
+  // Fermer
+  window.closeAr = function () {
     if (history.length > 1) {
       history.back();
     } else {
       window.close();
     }
-  }
+  };
 
-  // 4) Boucle de rendu WebXR avec hit-test
+  // Fallback : premier tap écran → autoriser play() sur Android
+  window.addEventListener('click', () => {
+    if (videoElement && videoElement.paused) {
+      videoElement.play().catch(() => {});
+    }
+  }, { once: true });
+
   function render(timestamp, frame) {
     const session = renderer.xr.getSession();
-    if (session && hitTestSource && frame) {
+    if (session && hitTestSourceRequested && hitTestSource && frame) {
       const referenceSpace = renderer.xr.getReferenceSpace();
       const hitTestResults = frame.getHitTestResults(hitTestSource);
 
@@ -344,25 +339,14 @@
     renderer.render(scene, camera);
   }
 
-  // Fallback : premier tap → autoriser play() sur Android
-  window.addEventListener('click', () => {
-    if (videoElement && videoElement.paused) {
-      videoElement.play().catch(() => {});
-    }
-  }, { once: true });
-
-  window.onload = () => {
-    if (!('xr' in navigator)) {
-      document.getElementById('video-meta').textContent =
-        "WebXR AR non supporté sur ce navigateur (ouvre dans Chrome Android).";
-      console.error("navigator.xr non disponible");
-      return;
-    }
-
-    initThree();
-    parseUrlParamsAndLoadVideo();
-    playCurrentVideo();
-  };
+  // Démarrage
+  if (!('xr' in navigator)) {
+    document.getElementById('video-meta').textContent =
+      "WebXR AR non supporté sur ce navigateur (ouvre dans Chrome Android).";
+    console.error("navigator.xr non disponible");
+  } else {
+    init();
+  }
 </script>
 
 </body>
