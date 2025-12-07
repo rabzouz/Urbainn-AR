@@ -243,45 +243,82 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  function createBoardIfNeeded() {
-    if (boardGroup) return;
+function createBoardIfNeeded() {
+  if (boardGroup) return;
 
-    boardGroup = new THREE.Group();
+  boardGroup = new THREE.Group();
 
-    // Fond légèrement plus grand que la vidéo
-    const bgGeo = new THREE.PlaneGeometry(1.1, 2.0);
-    const bgMat = new THREE.MeshBasicMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: 0.7
-    });
-    const bgPlane = new THREE.Mesh(bgGeo, bgMat);
-    bgPlane.position.set(0, 0, 0);
-    boardGroup.add(bgPlane);
+  // Fond légèrement plus grand que la vidéo (noir translucide)
+  const bgGeo = new THREE.PlaneGeometry(1.1, 2.0);
+  const bgMat = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    transparent: true,
+    opacity: 0.7
+  });
+  const bgPlane = new THREE.Mesh(bgGeo, bgMat);
+  bgPlane.position.set(0, 0, 0);
+  boardGroup.add(bgPlane);
 
-    // Plane vidéo portrait 9:16, un peu plus haut
-    const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
-    const videoMat = new THREE.MeshBasicMaterial({
-      map: videoTexture,
-      side: THREE.DoubleSide
-    });
-    videoPlane = new THREE.Mesh(videoGeo, videoMat);
-    videoPlane.position.set(0, 0.15, 0.01); // légèrement devant le fond
-    boardGroup.add(videoPlane);
+  // Cadre néon vert/bleu autour de la vidéo : 4 barres fines
+  const frameColor = 0x00f5ff; // cyan néon
+  const frameMat = new THREE.MeshBasicMaterial({
+    color: frameColor,
+    transparent: true,
+    opacity: 0.9
+  });
 
-    // Plane infos (bandeau texte) sous la vidéo
-    const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
-    infoTexture = new THREE.CanvasTexture(infoCanvas);
-    const infoMat = new THREE.MeshBasicMaterial({
-      map: infoTexture,
-      transparent: true
-    });
-    infoPlane = new THREE.Mesh(infoGeo, infoMat);
-    infoPlane.position.set(0, -0.85, 0.01);
-    boardGroup.add(infoPlane);
+  const frameThickness = 0.03;
+  const frameWidth = 0.9 + 0.04;
+  const frameHeight = 1.6 + 0.04;
 
-    scene.add(boardGroup);
-  }
+  // Barre horizontale haute
+  const topBarGeo = new THREE.PlaneGeometry(frameWidth, frameThickness);
+  const topBar = new THREE.Mesh(topBarGeo, frameMat);
+  topBar.position.set(0, 0.75, 0.02);
+  boardGroup.add(topBar);
+
+  // Barre horizontale basse
+  const bottomBarGeo = new THREE.PlaneGeometry(frameWidth, frameThickness);
+  const bottomBar = new THREE.Mesh(bottomBarGeo, frameMat);
+  bottomBar.position.set(0, -0.75, 0.02);
+  boardGroup.add(bottomBar);
+
+  // Barre verticale gauche
+  const leftBarGeo = new THREE.PlaneGeometry(frameThickness, frameHeight);
+  const leftBar = new THREE.Mesh(leftBarGeo, frameMat);
+  leftBar.position.set(-frameWidth / 2, 0, 0.02);
+  boardGroup.add(leftBar);
+
+  // Barre verticale droite
+  const rightBarGeo = new THREE.PlaneGeometry(frameThickness, frameHeight);
+  const rightBar = new THREE.Mesh(rightBarGeo, frameMat);
+  rightBar.position.set(frameWidth / 2, 0, 0.02);
+  boardGroup.add(rightBar);
+
+  // Plane vidéo portrait 9:16 (légèrement plus bas pour laisser la place au bandeau texte en haut)
+  const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
+  const videoMat = new THREE.MeshBasicMaterial({
+    map: videoTexture,
+    side: THREE.DoubleSide
+  });
+  videoPlane = new THREE.Mesh(videoGeo, videoMat);
+  videoPlane.position.set(0, -0.1, 0.01); // décalé un peu vers le bas
+  boardGroup.add(videoPlane);
+
+  // Plane infos (bandeau texte) AU-DESSUS de la vidéo
+  const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
+  infoTexture = new THREE.CanvasTexture(infoCanvas);
+  const infoMat = new THREE.MeshBasicMaterial({
+    map: infoTexture,
+    transparent: true
+  });
+  infoPlane = new THREE.Mesh(infoGeo, infoMat);
+  infoPlane.position.set(0, 0.95, 0.01); // AU-DESSUS de la vidéo
+  boardGroup.add(infoPlane);
+
+  scene.add(boardGroup);
+}
+
 
   function onSelect() {
     if (!reticle.visible || !videoTexture) return;
