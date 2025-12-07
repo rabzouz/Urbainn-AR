@@ -132,7 +132,7 @@
   <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante" disabled>➡️</button>
 </div>
 
-<!-- Vidéo HTML5 source pour la texture -->
+<!-- Vidéo HTML5 source pour la texture principale -->
 <video
   id="video"
   src=""
@@ -140,6 +140,19 @@
   loop
   playsinline
   webkit-playsinline
+  crossorigin="anonymous"
+  style="display:none">
+</video>
+
+<!-- Vidéo HTML5 pour le CADRE ANIMÉ -->
+<video
+  id="frameVideo"
+  src=""
+  preload="auto"
+  loop
+  playsinline
+  webkit-playsinline
+  muted
   crossorigin="anonymous"
   style="display:none">
 </video>
@@ -157,7 +170,12 @@
   let videoTexture = null;
   let soundEnabled = true;
 
-  // Panneau 3D : group global (fond + vidéo + bandeau infos + logo + colonne sociale)
+  // Vidéo de cadre animé
+  let frameVideoElement = null;
+  let frameVideoTexture = null;
+  let framePlane = null;
+
+  // Panneau 3D : group global (fond + vidéo + bandeau infos + logo + colonne sociale + cadre animé)
   let boardGroup = null;
   let groundPlane = null;
   let frameMatGlobal = null; // pour les effets animés sur le cadre
@@ -241,6 +259,7 @@
 
     parseUrlParamsAndLoadVideos();
     setupVideoElement();
+    setupFrameVideoElement();
     setupInfoCanvas();
 
     if (videos.length > 0) {
@@ -260,17 +279,15 @@
 
     boardGroup = new THREE.Group();
 
-    // Panneau arrière noir translucide, visible des deux côtés
-    const backGeo = new THREE.PlaneGeometry(1.4, 2.2);
-    const backMat = new THREE.MeshBasicMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: 0.7,
+    // Panneau arrière ANIMÉ : vidéo de cadre
+    const frameGeo = new THREE.PlaneGeometry(1.4, 2.2);
+    const frameMat = new THREE.MeshBasicMaterial({
+      map: frameVideoTexture,
       side: THREE.DoubleSide
     });
-    const backPanel = new THREE.Mesh(backGeo, backMat);
-    backPanel.position.set(0, 0, 0);
-    boardGroup.add(backPanel);
+    framePlane = new THREE.Mesh(frameGeo, frameMat);
+    framePlane.position.set(0, 0, 0);
+    boardGroup.add(framePlane);
 
     // Cadre néon 3D tout autour (4 barres BoxGeometry)
     const frameColorOuter = 0x00f5ff; // cyan
@@ -280,14 +297,14 @@
     const frameWidth = 1.0;
     const frameHeight = 1.85;
 
-    const frameMat = new THREE.MeshStandardMaterial({
+    const frameMatNeon = new THREE.MeshStandardMaterial({
       color: frameColorOuter,
       emissive: frameColorOuter,
       emissiveIntensity: 1.5,
       metalness: 0.2,
       roughness: 0.3
     });
-    frameMatGlobal = frameMat;
+    frameMatGlobal = frameMatNeon;
 
     // Petite lumière néon pour accentuer l'effet
     const neonLight = new THREE.PointLight(frameColorInner, 0.8, 4, 2.0);
@@ -296,25 +313,25 @@
 
     // Barre horizontale haute
     const topBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
-    const topBar = new THREE.Mesh(topBarGeo, frameMat);
+    const topBar = new THREE.Mesh(topBarGeo, frameMatNeon);
     topBar.position.set(0, frameHeight / 2, frameDepth / 2);
     boardGroup.add(topBar);
 
     // Barre horizontale basse
     const bottomBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
-    const bottomBar = new THREE.Mesh(bottomBarGeo, frameMat);
+    const bottomBar = new THREE.Mesh(bottomBarGeo, frameMatNeon);
     bottomBar.position.set(0, -frameHeight / 2, frameDepth / 2);
     boardGroup.add(bottomBar);
 
     // Barre verticale gauche
     const leftBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
-    const leftBar = new THREE.Mesh(leftBarGeo, frameMat);
+    const leftBar = new THREE.Mesh(leftBarGeo, frameMatNeon);
     leftBar.position.set(-frameWidth / 2, 0, frameDepth / 2);
     boardGroup.add(leftBar);
 
     // Barre verticale droite
     const rightBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
-    const rightBar = new THREE.Mesh(rightBarGeo, frameMat);
+    const rightBar = new THREE.Mesh(rightBarGeo, frameMatNeon);
     rightBar.position.set(frameWidth / 2, 0, frameDepth / 2);
     boardGroup.add(rightBar);
 
@@ -326,7 +343,7 @@
       opacity: 0.35
     });
     groundPlane = new THREE.Mesh(groundGeo, groundMat);
-    groundPlane.rotation.x = -Math.PI / 2; // horizontal
+    groundPlane.rotation.x = -Math.PI / 2;
     groundPlane.position.set(0, -frameHeight / 2 - 0.05, 0);
     boardGroup.add(groundPlane);
 
@@ -380,9 +397,9 @@
 
     const logoPlane = new THREE.Mesh(logoGeo, logoMat);
     logoPlane.position.set(
-      0.9 / 2 + logoWidth / 2 + 0.08, // à droite du bandeau (largeur infoPlane = 0.9)
-      1.15,                           // même hauteur Y que infoPlane
-      0.06                            // légèrement devant le panneau
+      0.9 / 2 + logoWidth / 2 + 0.08,
+      1.15,
+      0.06
     );
     boardGroup.add(logoPlane);
 
@@ -467,6 +484,20 @@
 
     videoTexture = new THREE.VideoTexture(videoElement);
     videoTexture.encoding = THREE.sRGBEncoding;
+  }
+
+  function setupFrameVideoElement() {
+    frameVideoElement = document.getElementById('frameVideo');
+    if (!frameVideoElement) return;
+
+    const frameVideoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/frameUrbainar.mp4';
+
+    frameVideoElement.src = frameVideoUrl;
+    frameVideoElement.muted = true;
+    frameVideoElement.load();
+
+    frameVideoTexture = new THREE.VideoTexture(frameVideoElement);
+    frameVideoTexture.encoding = THREE.sRGBEncoding;
   }
 
   function setupInfoCanvas() {
@@ -635,9 +666,15 @@
 
   function playCurrentVideo() {
     if (!videoElement) return;
+
     videoElement
       .play()
-      .then(() => console.log('▶️ Lecture vidéo'))
+      .then(() => {
+        console.log('▶️ Lecture vidéo');
+        if (frameVideoElement && frameVideoElement.paused) {
+          frameVideoElement.play().catch(() => {});
+        }
+      })
       .catch((e) => {
         console.log('⚠️ Autoplay bloqué, mute forcé.', e);
         soundEnabled = false;
@@ -647,6 +684,9 @@
         if (btn) {
           btn.textContent = '🔇';
           btn.title = 'Son OFF';
+        }
+        if (frameVideoElement && frameVideoElement.paused) {
+          frameVideoElement.play().catch(() => {});
         }
       });
   }
@@ -690,6 +730,9 @@
   window.addEventListener('click', () => {
     if (videoElement && videoElement.paused) {
       videoElement.play().catch(() => {});
+    }
+    if (frameVideoElement && frameVideoElement.paused) {
+      frameVideoElement.play().catch(() => {});
     }
   }, { once: true });
 
