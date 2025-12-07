@@ -157,13 +157,19 @@
   let videoTexture = null;
   let soundEnabled = true;
 
-  // Panneau 3D : group global (fond + vidéo + bandeau infos + logo)
+  // Panneau 3D : group global (fond + vidéo + bandeau infos + logo + colonne sociale)
   let boardGroup = null;
   let videoPlane = null;
   let infoPlane = null;
   let infoTexture = null;
   let infoCanvas = null;
   let infoCtx = null;
+
+  // Colonne sociale (likes / vues façon TikTok)
+  let socialPlane = null;
+  let socialTexture = null;
+  let socialCanvas = null;
+  let socialCtx = null;
 
   // Liste des vidéos et métadonnées
   let videos = [];          // URLs
@@ -190,7 +196,7 @@
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // Petite lumière d'ambiance pour aider les matériaux Standard
+    // Lumière d'ambiance pour les matériaux Standard
     const ambient = new THREE.AmbientLight(0xffffff, 0.3);
     scene.add(ambient);
 
@@ -319,7 +325,7 @@
     videoPlane.position.set(0, -0.1, 0.02);
     boardGroup.add(videoPlane);
 
-    // Bandeau infos AU-DESSUS de la vidéo, au-dessus de la barre néon
+    // Bandeau infos AU-DESSUS de la vidéo
     const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
     infoTexture = new THREE.CanvasTexture(infoCanvas);
     const infoMat = new THREE.MeshBasicMaterial({
@@ -331,30 +337,39 @@
     infoPlane.position.set(0, 1.15, 0.04);
     boardGroup.add(infoPlane);
 
-  // Logo UrbainAR sur le côté droit
-const logoWidth = 0.35;
-const logoHeight = 0.35;
-const logoGeo = new THREE.PlaneGeometry(logoWidth, logoHeight);
+    // Colonne sociale TikTok à droite de la vidéo
+    const socialGeo = new THREE.PlaneGeometry(0.28, 0.9);
+    socialTexture = new THREE.CanvasTexture(socialCanvas);
+    const socialMat = new THREE.MeshBasicMaterial({
+      map: socialTexture,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    socialPlane = new THREE.Mesh(socialGeo, socialMat);
+    socialPlane.position.set(0.9 / 2 + 0.18, -0.1, 0.04); // à droite de la vidéo
+    boardGroup.add(socialPlane);
 
-// URL publique Supabase de ton logo
-const logoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/logoUrbainar.png';
+    // Logo UrbainAR EN HAUT du panneau
+    const logoWidth = 0.35;
+    const logoHeight = 0.35;
+    const logoGeo = new THREE.PlaneGeometry(logoWidth, logoHeight);
 
-const logoTexture = new THREE.TextureLoader().load(logoUrl);
+    const logoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/logoUrbainar.png';
+    const logoTexture = new THREE.TextureLoader().load(logoUrl);
 
-const logoMat = new THREE.MeshBasicMaterial({
-  map: logoTexture,
-  transparent: true,
-  side: THREE.DoubleSide
-});
+    const logoMat = new THREE.MeshBasicMaterial({
+      map: logoTexture,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
 
-const logoPlane = new THREE.Mesh(logoGeo, logoMat);
-logoPlane.position.set(
-  frameWidth / 2 + logoWidth / 2 + 0.1,
-  0.0,
-  0.05
-);
-boardGroup.add(logoPlane);
-
+    const logoPlane = new THREE.Mesh(logoGeo, logoMat);
+    logoPlane.position.set(
+      0,                                        // centré
+      frameHeight / 2 + logoHeight / 2 + 0.08, // au-dessus du cadre
+      0.06                                      // légèrement devant
+    );
+    boardGroup.add(logoPlane);
 
     scene.add(boardGroup);
   }
@@ -440,11 +455,19 @@ boardGroup.add(logoPlane);
   }
 
   function setupInfoCanvas() {
+    // Bandeau infos (username + date)
     infoCanvas = document.createElement('canvas');
     infoCanvas.width = 512;
     infoCanvas.height = 256;
     infoCtx = infoCanvas.getContext('2d');
     drawInfoText(0);
+
+    // Colonne sociale (TikTok-style à droite)
+    socialCanvas = document.createElement('canvas');
+    socialCanvas.width = 256;
+    socialCanvas.height = 512;
+    socialCtx = socialCanvas.getContext('2d');
+    drawSocialColumn(0);
   }
 
   function drawInfoText(index) {
@@ -452,8 +475,6 @@ boardGroup.add(logoPlane);
 
     const username = usernames[index] || 'UrbainAR';
     const date = dates[index] || 'Date 12/2025';
-    const likes = likesList[index] ?? 124;
-    const views = viewsList[index] ?? 654;
 
     infoCtx.clearRect(0, 0, infoCanvas.width, infoCanvas.height);
 
@@ -486,13 +507,68 @@ boardGroup.add(logoPlane);
     infoCtx.fillStyle = '#cccccc';
     infoCtx.fillText(date, 40, 86);
 
-    infoCtx.fillStyle = '#ffffff';
-    infoCtx.font = '26px system-ui';
-    infoCtx.fillText(`❤️ ${likes}`, 40, 140);
-    infoCtx.fillText(`👁 ${views}`, 220, 140);
-
     if (infoTexture) {
       infoTexture.needsUpdate = true;
+    }
+  }
+
+  function drawSocialColumn(index) {
+    if (!socialCtx) return;
+
+    const likes = likesList[index] ?? 0;
+    const views = viewsList[index] ?? 0;
+
+    const w = socialCanvas.width;
+    const h = socialCanvas.height;
+
+    socialCtx.clearRect(0, 0, w, h);
+
+    // Fond vertical arrondi
+    socialCtx.fillStyle = 'rgba(0,0,0,0.75)';
+    const r = 40;
+    const padX = 40;
+    const padY = 40;
+    const boxW = w - padX * 2;
+    const boxH = h - padY * 2;
+
+    socialCtx.beginPath();
+    socialCtx.moveTo(padX + r, padY);
+    socialCtx.lineTo(padX + boxW - r, padY);
+    socialCtx.quadraticCurveTo(padX + boxW, padY, padX + boxW, padY + r);
+    socialCtx.lineTo(padX + boxW, padY + boxH - r);
+    socialCtx.quadraticCurveTo(padX + boxW, padY + boxH, padX + boxW - r, padY + boxH);
+    socialCtx.lineTo(padX + r, padY + boxH);
+    socialCtx.quadraticCurveTo(padX, padY + boxH, padX, padY + boxH - r);
+    socialCtx.lineTo(padX, padY + r);
+    socialCtx.quadraticCurveTo(padX, padY, padX + r, padY);
+    socialCtx.closePath();
+    socialCtx.fill();
+
+    socialCtx.textAlign = 'center';
+    socialCtx.textBaseline = 'middle';
+
+    // Bloc LIKE (haut)
+    const centerX = w / 2;
+    let centerY = padY + boxH * 0.30;
+
+    socialCtx.font = '40px system-ui';
+    socialCtx.fillStyle = '#ffffff';
+    socialCtx.fillText('❤️', centerX, centerY - 30);
+
+    socialCtx.font = '28px system-ui';
+    socialCtx.fillText(`${likes}`, centerX, centerY + 18);
+
+    // Bloc VUES (bas)
+    centerY = padY + boxH * 0.68;
+
+    socialCtx.font = '40px system-ui';
+    socialCtx.fillText('👁', centerX, centerY - 30);
+
+    socialCtx.font = '28px system-ui';
+    socialCtx.fillText(`${views}`, centerX, centerY + 18);
+
+    if (socialTexture) {
+      socialTexture.needsUpdate = true;
     }
   }
 
@@ -521,6 +597,7 @@ boardGroup.add(logoPlane);
       `Vidéo ${index + 1}/${videos.length}`;
 
     drawInfoText(index);
+    drawSocialColumn(index);
     updateNavButtonsState();
 
     console.log('▶️ Vidéo chargée index', index, url);
