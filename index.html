@@ -81,7 +81,7 @@
       transform: scale(0.95);
     }
 
-    /* Contrôles bas (juste son ON/OFF ici) */
+    /* Contrôles bas : prev / sound / next */
     #video-nav {
       position: fixed;
       bottom: 20px;
@@ -107,6 +107,11 @@
       justify-content: center;
     }
 
+    #video-nav button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
     #xr-button {
       position: fixed;
       bottom: 20px;
@@ -121,7 +126,7 @@
 <div id="video-info">
   <div id="video-title">Chargement de la vidéo...</div>
   <div id="video-meta">WebXR AR : tape pour placer l'écran vidéo sur le sol.</div>
-  <div id="video-count">1 vidéo en cours</div>
+  <div id="video-count">0 vidéo</div>
 </div>
 
 <div id="top-right">
@@ -129,7 +134,9 @@
 </div>
 
 <div id="video-nav">
+  <button id="btn-prev" onclick="prevVideo()" title="Vidéo précédente" disabled>⬅️</button>
   <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF">🔊</button>
+  <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante" disabled>➡️</button>
 </div>
 
 <!-- Vidéo HTML5 source pour la texture -->
@@ -160,8 +167,11 @@
   let soundEnabled = true;
   let videoPlane = null;
 
+  // Liste des vidéos au même endroit
+  let videos = [];      // array d'URLs
+  let currentIndex = 0; // index de la vidéo affichée
+
   function init() {
-    // --- Three.js de base ---
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera(
@@ -177,7 +187,7 @@
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // Réticule (comme l’exemple officiel three.js) [web:253]
+    // Réticule
     const ringGeo = new THREE.RingGeometry(0.05, 0.06, 32).rotateX(-Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     reticle = new THREE.Mesh(ringGeo, ringMat);
@@ -203,16 +213,18 @@
         hitTestSource = null;
       });
 
-      // Geste "tap" = place/maj l'écran vidéo
       session.addEventListener('select', onSelect);
     });
 
     window.addEventListener('resize', onWindowResize);
     renderer.setAnimationLoop(render);
 
-    // Charger la vidéo depuis ?video=
-    parseUrlParamsAndLoadVideo();
-    playCurrentVideo();
+    parseUrlParamsAndLoadVideos();
+    setupVideoElement();
+    if (videos.length > 0) {
+      loadVideo(0);
+      playCurrentVideo();
+    }
   }
 
   function onWindowResize() {
@@ -222,51 +234,64 @@
   }
 
   function onSelect() {
-  if (!reticle.visible || !videoTexture) return;
+    if (!reticle.visible || !videoTexture) return;
 
-  if (!videoPlane) {
-    // Plane 1080x1920 → ratio 9:16
-    const geometry = new THREE.PlaneGeometry(0.9, 1.6);
-    const material = new THREE.MeshBasicMaterial({
-      map: videoTexture,
-      side: THREE.DoubleSide
-    });
-    videoPlane = new THREE.Mesh(geometry, material);
-    scene.add(videoPlane);
-  }
-
-  // Placer l’écran à la position du reticle
-  videoPlane.position.setFromMatrixPosition(reticle.matrix);
-
-  // Orienter seulement autour de Y (verticale), pour qu’il reste bien droit
-  const camPos = new THREE.Vector3();
-  camera.getWorldPosition(camPos);
-
-  const objPos = new THREE.Vector3();
-  videoPlane.getWorldPosition(objPos);
-
-  const dir = new THREE.Vector3().subVectors(camPos, objPos);
-  const angleY = Math.atan2(dir.x, dir.z); // rotation dans le plan XZ
-
-  videoPlane.rotation.set(0, angleY, 0); // vertical (rotation sur Y seulement)
-}
-
-
-  function parseUrlParamsAndLoadVideo() {
-    const params = new URLSearchParams(window.location.search);
-    const videoUrl = params.get('video');
-
-    videoElement = document.getElementById('video');
-
-    if (!videoUrl) {
-      document.getElementById('video-title').textContent = "Paramètre vidéo manquant";
-      console.error("Paramètre ?video manquant dans l'URL");
-      return;
+    if (!videoPlane) {
+      const geometry = new THREE.PlaneGeometry(0.9, 1.6);
+      const material = new THREE.MeshBasicMaterial({
+        map: videoTexture,
+        side: THREE.DoubleSide
+      });
+      videoPlane = new THREE.Mesh(geometry, material);
+      scene.add(videoPlane);
     }
 
-    videoElement.src = videoUrl;
-    videoElement.muted = !soundEnabled;
-    videoElement.load();
+    // Position
+    videoPlane.position.setFromMatrixPosition(reticle.matrix);
+
+    // Orientation : panneau vertical, pivot Y uniquement
+    const camPos = new THREE.Vector3();
+    camera.getWorldPosition(camPos);
+
+    const objPos = new THREE.Vector3();
+    videoPlane.getWorldPosition(objPos);
+
+    const dir = new THREE.Vector3().subVectors(camPos, objPos);
+    const angleY = Math.atan2(dir.x, dir.z);
+
+    videoPlane.rotation.set(0, angleY, 0);
+  }
+
+  // ------- Gestion des vidéos multiples -------
+
+  function parseUrlParamsAndLoadVideos() {
+    const params = new URLSearchParams(window.location.search);
+
+    // 1) Mode multi : ?videos=url1,url2,url3
+    const videosParam = params.get('videos');
+
+    if (videosParam) {
+      videos = videosParam.split(',').map(v => v.trim()).filter(v => v.length > 0);
+    } else {
+      // 2) Compat ancien : ?video=...
+      const videoUrl = params.get('video');
+      if (videoUrl) {
+        videos = [videoUrl];
+      }
+    }
+
+    document.getElementById('video-count').textContent =
+      videos.length > 0
+        ? `Vidéo 1/${videos.length}`
+        : 'Aucune vidéo';
+
+    // Activer / désactiver les flèches
+    updateNavButtonsState();
+  }
+
+  function setupVideoElement() {
+    videoElement = document.getElementById('video');
+    if (!videoElement) return;
 
     videoElement.addEventListener('ended', () => {
       videoElement.currentTime = 0;
@@ -275,12 +300,50 @@
 
     videoTexture = new THREE.VideoTexture(videoElement);
     videoTexture.encoding = THREE.sRGBEncoding;
+  }
+
+  function loadVideo(index) {
+    if (!videos || videos.length === 0) return;
+    if (index < 0 || index >= videos.length) return;
+
+    currentIndex = index;
+
+    if (!videoElement) {
+      videoElement = document.getElementById('video');
+    }
+
+    const url = videos[index];
+    videoElement.src = url;
+    videoElement.muted = !soundEnabled;
+    videoElement.load();
 
     document.getElementById('video-title').textContent = 'Vidéo UrbainAR';
-    document.getElementById('video-meta').textContent = 'Bouge un peu, attends le réticule vert, puis tape pour placer la vidéo.';
-    document.getElementById('video-count').textContent = '1 vidéo en cours';
+    document.getElementById('video-meta').textContent =
+      videos.length > 1
+        ? 'Flèches pour changer de vidéo à ce spot.'
+        : 'Vidéo depuis UrbainAR (une seule vidéo).';
 
-    console.log('▶️ Vidéo chargée pour WebXR AR');
+    document.getElementById('video-count').textContent =
+      `Vidéo ${index + 1}/${videos.length}`;
+
+    updateNavButtonsState();
+
+    console.log('▶️ Vidéo chargée index', index, url);
+  }
+
+  function updateNavButtonsState() {
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+
+    if (!btnPrev || !btnNext) return;
+
+    if (videos.length <= 1) {
+      btnPrev.disabled = true;
+      btnNext.disabled = true;
+    } else {
+      btnPrev.disabled = currentIndex === 0;
+      btnNext.disabled = currentIndex === videos.length - 1;
+    }
   }
 
   function playCurrentVideo() {
@@ -300,6 +363,21 @@
         }
       });
   }
+
+  // Navigation
+  window.nextVideo = function () {
+    if (currentIndex < videos.length - 1) {
+      loadVideo(currentIndex + 1);
+      playCurrentVideo();
+    }
+  };
+
+  window.prevVideo = function () {
+    if (currentIndex > 0) {
+      loadVideo(currentIndex - 1);
+      playCurrentVideo();
+    }
+  };
 
   // Toggle son
   window.toggleSound = function () {
@@ -328,6 +406,7 @@
     }
   }, { once: true });
 
+  // Boucle de rendu WebXR
   function render(timestamp, frame) {
     const session = renderer.xr.getSession();
     if (session && hitTestSourceRequested && hitTestSource && frame) {
