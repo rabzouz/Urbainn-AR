@@ -5,7 +5,7 @@
   <title>UrbainAR - Vidéos près de vous</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-  <!-- A-Frame + AR.js -->
+  <!-- A-Frame + AR.js (sans location-based pour ce test) -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
@@ -162,9 +162,6 @@
   loading-screen="enabled: true; backgroundColor: #000000; dotsColor: #1a73e8"
   arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false">
 
-  <!-- Caméra (on garde gps-new-camera pour plus tard si tu veux le GPS) -->
-  <a-camera gps-new-camera="gpsMinDistance: 5" rotation-reader></a-camera>
-
   <a-assets>
     <video
       id="video"
@@ -177,14 +174,18 @@
     </video>
   </a-assets>
 
-  <!-- Écran vidéo toujours visible devant la caméra -->
-  <a-entity id="video-container" position="0 1.5 -3">
-    <a-plane
-      width="0.9"
-      height="1.6"
-      material="src: #video; shader: flat;">
-    </a-plane>
-  </a-entity>
+  <!-- Caméra simple -->
+  <a-entity camera></a-entity>
+
+  <!-- Écran vidéo portrait 9:16 devant la caméra -->
+  <a-video
+    id="video-screen"
+    src="#video"
+    width="0.9"
+    height="1.6"
+    position="0 1.5 -3"
+    rotation="0 0 0">
+  </a-video>
 
 </a-scene>
 
