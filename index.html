@@ -192,7 +192,7 @@
   async function loadAllVideos() {
     try {
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/videos?select=*&is_public=eq.true`,
+        `${SUPABASE_URL}/rest/v1/videos?select=*`,
         {
           headers: {
             apikey: SUPABASE_KEY,
@@ -201,8 +201,14 @@
         }
       );
 
+      if (!response.ok) {
+        console.error('❌ Erreur HTTP Supabase :', response.status, await response.text());
+        document.getElementById('video-title').textContent = 'Erreur Supabase ' + response.status;
+        return;
+      }
+
       allVideos = await response.json();
-      console.log('✅ vidéos (publiques) chargées:', allVideos.length);
+      console.log('✅ vidéos chargées:', allVideos.length);
 
       document.getElementById('video-count').textContent =
         allVideos.length + (allVideos.length > 1 ? ' vidéos' : ' vidéo') + ' proches';
@@ -215,6 +221,7 @@
       document.getElementById('video-title').textContent = 'Erreur de chargement';
     }
   }
+
 
   // Ajoute un pin AR pour chaque vidéo autour de l'utilisateur
   function placeVideoEntities() {
