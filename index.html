@@ -2,42 +2,24 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>UrbainAR - Vidéos près de vous (sans marker)</title>
+  <title>UrbainAR - WebXR AR</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-  <!-- A-Frame uniquement (sans AR.js) -->
-  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <!-- Three.js + ARButton (WebXR) -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.160.0/examples/jsm/webxr/ARButton.js"></script>
 
   <style>
     body {
       margin: 0;
       overflow: hidden;
-      touch-action: none;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
       background: #000;
       color: #fff;
     }
 
-    /* Vidéo caméra en plein écran derrière la scène */
-    #cam-video {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      z-index: 0;
-      background: #000;
-    }
-
-    /* A-Frame canvas au-dessus de la caméra */
-    a-scene {
-      position: fixed !important;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 1;
+    canvas {
+      display: block;
     }
 
     /* Top bar infos vidéo sélectionnée */
@@ -52,11 +34,12 @@
       color: #fff;
       padding: 8px 12px;
       border-radius: 12px;
-      z-index: 9999;
+      z-index: 10;
       font-size: 13px;
       display: flex;
       flex-direction: column;
       gap: 2px;
+      pointer-events: none;
     }
 
     #video-title {
@@ -75,12 +58,12 @@
       opacity: 0.9;
     }
 
-    /* Bouton Fermer (retour app) */
+    /* Bouton Fermer */
     #top-right {
       position: fixed;
       top: 10px;
       right: 10px;
-      z-index: 9999;
+      z-index: 10;
     }
 
     #btn-close {
@@ -102,13 +85,13 @@
       transform: scale(0.95);
     }
 
-    /* Contrôles en bas (navigation dans la liste, son) */
+    /* Contrôles bas (juste son ON/OFF ici) */
     #video-nav {
       position: fixed;
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 9999;
+      z-index: 10;
       display: flex;
       gap: 18px;
       align-items: center;
@@ -123,142 +106,162 @@
       border: 2px solid rgba(255,255,255,0.9);
       border-radius: 50%;
       cursor: pointer;
-      transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    #video-nav button:hover {
-      background: rgba(255,255,255,0.2);
-      box-shadow: 0 0 12px rgba(0,0,0,0.6);
-      transform: scale(1.05);
-    }
-
-    #video-nav button:active {
-      transform: scale(0.95);
-    }
-
-    #video-nav button:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-
-    /* Loader A‑Frame custom */
-    .a-loader-title {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
-      font-size: 15px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #ffffff;
+    #xr-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 10;
     }
   </style>
 </head>
 <body>
 
-<!-- Vidéo de la caméra (fond) -->
-<video id="cam-video" autoplay playsinline webkit-playsinline muted></video>
-
-<!-- Top bar infos vidéo sélectionnée -->
+<!-- UI overlay -->
 <div id="video-info">
   <div id="video-title">Chargement de la vidéo...</div>
-  <div id="video-meta">Vidéo en AR devant toi (sans marker).</div>
+  <div id="video-meta">WebXR AR : cherche un sol puis tape pour placer l'écran.</div>
   <div id="video-count">1 vidéo en cours</div>
 </div>
 
-<!-- Bouton Fermer -->
 <div id="top-right">
   <button id="btn-close" onclick="closeAr()" title="Fermer l'AR">✕</button>
 </div>
 
-<!-- Navigation (une seule vidéo, flèches désactivées) -->
 <div id="video-nav">
-  <button id="btn-prev" onclick="previousVideo()" title="Vidéo précédente" disabled>⬅️</button>
   <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF">🔊</button>
-  <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante" disabled>➡️</button>
 </div>
 
-<a-scene
-  embedded
-  vr-mode-ui="enabled: false"
-  renderer="alpha: true; antialias: true"
-  loading-screen="enabled: true; backgroundColor: #000000; dotsColor: #1a73e8">
+<!-- Vidéo HTML5 source pour la texture -->
+<video
+  id="video"
+  src=""
+  preload="auto"
+  loop
+  playsinline
+  webkit-playsinline
+  crossorigin="anonymous"
+  style="display:none">
+</video>
 
-  <a-assets>
-    <video
-      id="video"
-      src=""
-      preload="auto"
-      loop
-      crossorigin="anonymous"
-      playsinline
-      webkit-playsinline>
-    </video>
-  </a-assets>
-
-  <!-- Caméra 3D simple -->
-  <a-entity camera></a-entity>
-
-  <!-- Écran vidéo portrait 9:16 devant la caméra -->
-  <a-video
-    id="video-screen"
-    src="#video"
-    width="0.9"
-    height="1.6"
-    position="0 1.5 -3"
-    rotation="0 0 0">
-  </a-video>
-
-  <!-- Cube de debug devant la caméra -->
-  <a-box
-    id="debug-box"
-    position="0.8 1.5 -2.5"
-    depth="0.3"
-    height="0.3"
-    width="0.3"
-    color="#4CAF50">
-  </a-box>
-
-</a-scene>
+<div id="xr-button"></div>
 
 <script>
-  let videoElement = null;
-  let soundEnabled = true;
+  let camera, scene, renderer;
+  let reticle;
+  let hitTestSource = null;
+  let hitTestSourceRequested = false;
+  let xrSession = null;
 
-  // Démarrage de la caméra arrière dans #cam-video
-  async function startCameraBackground() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false
-      });
-      const camVideo = document.getElementById('cam-video');
-      camVideo.srcObject = stream;
-      await camVideo.play();
-      console.log('📷 Caméra arrière démarrée');
-    } catch (e) {
-      console.error('Erreur accès caméra', e);
-      document.getElementById('video-meta').textContent =
-        "Caméra non disponible (permissions ou navigateur).";
-    }
+  let videoElement = null;
+  let videoTexture = null;
+  let soundEnabled = true;
+  let videoPlane = null;
+
+  // 1) Initialisation Three.js
+  function initThree() {
+    scene = new THREE.Scene();
+
+    camera = new THREE.PerspectiveCamera(
+      70,
+      window.innerWidth / window.innerHeight,
+      0.01,
+      20
+    );
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // Réticule (anneau) pour montrer la position du hit-test
+    const ringGeo = new THREE.RingGeometry(0.05, 0.06, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    reticle = new THREE.Mesh(ringGeo, ringMat);
+    reticle.rotation.x = -Math.PI / 2;
+    reticle.visible = false;
+    scene.add(reticle);
+
+    // Bouton WebXR (AR)
+    const arButton = ARButton.createButton(renderer, {
+      requiredFeatures: ['hit-test'],
+      optionalFeatures: ['dom-overlay'],
+      domOverlay: { root: document.body }
+    });
+    document.getElementById('xr-button').appendChild(arButton);
+
+    // Quand une session AR démarre
+    renderer.xr.addEventListener('sessionstart', (ev) => {
+      xrSession = renderer.xr.getSession();
+      setupHitTestSource();
+      xrSession.addEventListener('select', onSelect);
+    });
+
+    // Quand la session se termine
+    renderer.xr.addEventListener('sessionend', () => {
+      xrSession = null;
+      hitTestSourceRequested = false;
+      hitTestSource = null;
+    });
+
+    window.addEventListener('resize', onWindowResize);
+
+    renderer.setAnimationLoop(render);
   }
 
-  // Boucle douce sur la vidéo Supabase
-  document.addEventListener('DOMContentLoaded', () => {
-    videoElement = document.querySelector('#video');
-    if (videoElement) {
-      videoElement.addEventListener('ended', () => {
-        videoElement.currentTime = 0;
-        videoElement.play().catch(() => {});
-      });
-    }
-  });
+  function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
 
-  // Lecture du paramètre ?video= depuis l'app Android
-  function parseUrlParamsAndLoad() {
+  // 2) Hit-test WebXR (pose du sol) [tap écran + plane 3D]
+  async function setupHitTestSource() {
+    if (hitTestSourceRequested) return;
+    const session = renderer.xr.getSession();
+    if (!session) return;
+
+    const viewerSpace = await session.requestReferenceSpace('viewer');
+    hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+
+    session.addEventListener('end', () => {
+      hitTestSourceRequested = false;
+      hitTestSource = null;
+    });
+
+    hitTestSourceRequested = true;
+  }
+
+  function onSelect() {
+    // Quand l'utilisateur tape, si le reticle est visible → placer/mettre à jour l'écran vidéo
+    if (!reticle.visible || !videoTexture) return;
+
+    if (!videoPlane) {
+      // Plane 1080x1920 → ratio 9:16 (on prend largeur 0.9, hauteur 1.6)
+      const geometry = new THREE.PlaneGeometry(0.9, 1.6);
+      const material = new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide });
+      videoPlane = new THREE.Mesh(geometry, material);
+      scene.add(videoPlane);
+    }
+
+    videoPlane.position.setFromMatrixPosition(reticle.matrix);
+    // orienter le plane vers la caméra
+    const camPos = new THREE.Vector3();
+    camera.getWorldPosition(camPos);
+    videoPlane.lookAt(camPos);
+  }
+
+  // 3) Chargement de la vidéo depuis ?video=
+  function parseUrlParamsAndLoadVideo() {
     const params = new URLSearchParams(window.location.search);
     const videoUrl = params.get('video');
+
+    videoElement = document.getElementById('video');
 
     if (!videoUrl) {
       document.getElementById('video-title').textContent = "Paramètre vidéo manquant";
@@ -266,25 +269,27 @@
       return;
     }
 
-    if (!videoElement) {
-      videoElement = document.querySelector('#video');
-    }
-
-    // Charger la vidéo envoyée par l'app (Supabase)
     videoElement.src = videoUrl;
     videoElement.muted = !soundEnabled;
     videoElement.load();
 
+    videoElement.addEventListener('ended', () => {
+      videoElement.currentTime = 0;
+      videoElement.play().catch(() => {});
+    });
+
+    videoTexture = new THREE.VideoTexture(videoElement);
+    videoTexture.encoding = THREE.sRGBEncoding;
+
     document.getElementById('video-title').textContent = 'Vidéo UrbainAR';
-    document.getElementById('video-meta').textContent = 'Vidéo depuis UrbainAR (sans marker)';
+    document.getElementById('video-meta').textContent = 'Tape sur le sol pour placer la vidéo.';
     document.getElementById('video-count').textContent = '1 vidéo en cours';
 
-    console.log('▶️ Vidéo chargée depuis URL param');
+    console.log('▶️ Vidéo chargée pour WebXR AR');
   }
 
   function playCurrentVideo() {
     if (!videoElement) return;
-
     videoElement
       .play()
       .then(() => console.log('▶️ Lecture vidéo'))
@@ -299,14 +304,6 @@
           btn.title = 'Son OFF';
         }
       });
-  }
-
-  function nextVideo() {
-    // pas utilisé ici (1 seule vidéo)
-  }
-
-  function previousVideo() {
-    // pas utilisé ici (1 seule vidéo)
   }
 
   function toggleSound() {
@@ -327,20 +324,44 @@
     }
   }
 
-  // Fallback : premier tap écran → autoriser play() sur mobile
-  window.addEventListener('click', () => {
-    if (!videoElement) {
-      videoElement = document.querySelector('#video');
+  // 4) Boucle de rendu WebXR avec hit-test
+  function render(timestamp, frame) {
+    const session = renderer.xr.getSession();
+    if (session && hitTestSource && frame) {
+      const referenceSpace = renderer.xr.getReferenceSpace();
+      const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+      if (hitTestResults.length > 0) {
+        const hit = hitTestResults[0];
+        const pose = hit.getPose(referenceSpace);
+        reticle.visible = true;
+        reticle.matrix.fromArray(pose.transform.matrix);
+      } else {
+        reticle.visible = false;
+      }
     }
+
+    renderer.render(scene, camera);
+  }
+
+  // Fallback : premier tap → autoriser play() sur Android
+  window.addEventListener('click', () => {
     if (videoElement && videoElement.paused) {
       videoElement.play().catch(() => {});
     }
   }, { once: true });
 
   window.onload = () => {
-    startCameraBackground();   // caméra HTML5 (fond)
-    parseUrlParamsAndLoad();   // charge la vidéo Supabase
-    playCurrentVideo();        // lance la vidéo
+    if (!('xr' in navigator)) {
+      document.getElementById('video-meta').textContent =
+        "WebXR AR non supporté sur ce navigateur (ouvre dans Chrome Android).";
+      console.error("navigator.xr non disponible");
+      return;
+    }
+
+    initThree();
+    parseUrlParamsAndLoadVideo();
+    playCurrentVideo();
   };
 </script>
 
