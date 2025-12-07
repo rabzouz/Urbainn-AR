@@ -178,13 +178,12 @@
   <!-- Marker HIRO qui affiche la vidéo Supabase courante -->
   <a-marker type="pattern" preset="hiro">
     <a-plane
-  position="0 0 0"
-  rotation="-90 0 0"
-  width="0.9"
-  height="1.6"
-  material="src: #video; shader: flat;">
-</a-plane>
-
+      position="0 0.4 0.2"
+      rotation="-70 0 0"
+      width="0.9"
+      height="1.6"
+      material="src: #video; shader: flat;">
+    </a-plane>
   </a-marker>
 
   <!-- Caméra simple (pas GPS pour ce test) -->
@@ -229,15 +228,28 @@
     }
   }
 
+  function preloadVideo(url) {
+    const preloader = document.createElement('video');
+    preloader.src = url;
+    preloader.preload = 'auto';
+    preloader.muted = true;
+  }
+
   function loadVideo(index) {
     if (index < 0 || index >= allVideos.length) return;
-
-    currentIndex = index;
-    const video = allVideos[index];
 
     if (!videoElement) {
       videoElement = document.querySelector('#video');
     }
+
+    // Stopper proprement la vidéo actuelle
+    try {
+      videoElement.pause();
+      videoElement.currentTime = 0;
+    } catch (e) {}
+
+    currentIndex = index;
+    const video = allVideos[index];
 
     videoElement.src = video.video_url;
     videoElement.muted = !soundEnabled;
@@ -261,6 +273,11 @@
     document.getElementById('btn-prev').disabled = index === 0;
     document.getElementById('btn-next').disabled =
       index === allVideos.length - 1;
+
+    // Précharger la vidéo suivante pour rendre la flèche plus fluide
+    if (index + 1 < allVideos.length) {
+      preloadVideo(allVideos[index + 1].video_url);
+    }
 
     console.log(`▶️ Vidéo ${index + 1}/${allVideos.length}`);
   }
@@ -327,7 +344,7 @@
   }, { once: true });
 
   window.onload = () => {
-    // 1) Charger les vidéos, puis lancer la première automatiquement
+    // Charger les vidéos, puis lancer la première automatiquement
     loadAllVideos().then(() => {
       if (allVideos.length > 0) {
         loadVideo(0);
