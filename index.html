@@ -159,6 +159,8 @@
 
   // Panneau 3D : group global (fond + vidéo + bandeau infos + logo + colonne sociale)
   let boardGroup = null;
+  let groundPlane = null;
+  let frameMatGlobal = null; // pour les effets animés sur le cadre
   let videoPlane = null;
   let infoPlane = null;
   let infoTexture = null;
@@ -285,6 +287,7 @@
       metalness: 0.2,
       roughness: 0.3
     });
+    frameMatGlobal = frameMat;
 
     // Petite lumière néon pour accentuer l'effet
     const neonLight = new THREE.PointLight(frameColorInner, 0.8, 4, 2.0);
@@ -314,6 +317,18 @@
     const rightBar = new THREE.Mesh(rightBarGeo, frameMat);
     rightBar.position.set(frameWidth / 2, 0, frameDepth / 2);
     boardGroup.add(rightBar);
+
+    // Sol / ombre sous le panneau (disque sombre horizontal, fake shadow)
+    const groundGeo = new THREE.CircleGeometry(1.2, 48);
+    const groundMat = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.35
+    });
+    groundPlane = new THREE.Mesh(groundGeo, groundMat);
+    groundPlane.rotation.x = -Math.PI / 2; // horizontal
+    groundPlane.position.set(0, -frameHeight / 2 - 0.05, 0);
+    boardGroup.add(groundPlane);
 
     // Plane vidéo portrait 9:16 (au centre du cadre)
     const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
@@ -346,10 +361,10 @@
       side: THREE.DoubleSide
     });
     socialPlane = new THREE.Mesh(socialGeo, socialMat);
-    socialPlane.position.set(0.9 / 2 + 0.18, -0.1, 0.04); // à droite de la vidéo
+    socialPlane.position.set(0.9 / 2 + 0.18, -0.1, 0.04);
     boardGroup.add(socialPlane);
 
-    // Logo UrbainAR EN HAUT du panneau
+    // Logo UrbainAR à droite du bandeau nom/date
     const logoWidth = 0.35;
     const logoHeight = 0.35;
     const logoGeo = new THREE.PlaneGeometry(logoWidth, logoHeight);
@@ -364,13 +379,11 @@
     });
 
     const logoPlane = new THREE.Mesh(logoGeo, logoMat);
-// Place le logo à droite, au niveau du bandeau nom/date (infoPlane)
-logoPlane.position.set(
-  0.9 / 2 + logoWidth / 2 + 0.08, // à droite du bandeau (même largeur que infoPlane = 0.9)
-  1.15,                           // même hauteur Y que infoPlane
-  0.06                            // légèrement devant le panneau
-);
-
+    logoPlane.position.set(
+      0.9 / 2 + logoWidth / 2 + 0.08, // à droite du bandeau (largeur infoPlane = 0.9)
+      1.15,                           // même hauteur Y que infoPlane
+      0.06                            // légèrement devant le panneau
+    );
     boardGroup.add(logoPlane);
 
     scene.add(boardGroup);
@@ -680,7 +693,7 @@ logoPlane.position.set(
     }
   }, { once: true });
 
-  // Boucle de rendu WebXR
+  // Boucle de rendu WebXR + animations néon / ombre
   function render(timestamp, frame) {
     const session = renderer.xr.getSession();
     if (session && hitTestSourceRequested && hitTestSource && frame) {
@@ -695,6 +708,22 @@ logoPlane.position.set(
       } else {
         reticle.visible = false;
       }
+    }
+
+    // Effets animés (néon + ombre)
+    const t = timestamp * 0.001;
+
+    if (frameMatGlobal) {
+      frameMatGlobal.emissiveIntensity = 1.5 + Math.sin(t * 2.0) * 0.4;
+    }
+
+    if (groundPlane) {
+      const baseOpacity = 0.30;
+      const extra = Math.abs(Math.sin(t * 1.5)) * 0.15;
+      groundPlane.material.opacity = baseOpacity + extra;
+
+      const scale = 1.0 + Math.sin(t * 1.2) * 0.05;
+      groundPlane.scale.set(scale, scale, 1);
     }
 
     renderer.render(scene, camera);
