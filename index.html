@@ -157,7 +157,7 @@
   let videoTexture = null;
   let soundEnabled = true;
 
-  // Panneau 3D : group global (fond + vidéo + bandeau infos)
+  // Panneau 3D : group global (fond + vidéo + bandeau infos + logo)
   let boardGroup = null;
   let videoPlane = null;
   let infoPlane = null;
@@ -190,6 +190,10 @@
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
+    // Petite lumière d'ambiance pour aider les matériaux Standard
+    const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+    scene.add(ambient);
+
     // Réticule
     const ringGeo = new THREE.RingGeometry(0.05, 0.06, 32).rotateX(-Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
@@ -205,7 +209,7 @@
     arButton.style.position = 'fixed';
     arButton.style.left = '50%';
     arButton.style.transform = 'translateX(-50%)';
-    arButton.style.bottom = '110px';   // au-dessus des boutons bas
+    arButton.style.bottom = '110px';
     arButton.style.zIndex = '11';
     document.body.appendChild(arButton);
 
@@ -243,90 +247,114 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-function createBoardIfNeeded() {
-  if (boardGroup) return;
+  function createBoardIfNeeded() {
+    if (boardGroup) return;
 
-  boardGroup = new THREE.Group();
+    boardGroup = new THREE.Group();
 
-  // Panneau arrière noir translucide, visible des deux côtés
-  const backGeo = new THREE.PlaneGeometry(1.2, 2.1);
-  const backMat = new THREE.MeshBasicMaterial({
-    color: 0x000000,
-    transparent: true,
-    opacity: 0.7,
-    side: THREE.DoubleSide
-  });
-  const backPanel = new THREE.Mesh(backGeo, backMat);
-  backPanel.position.set(0, 0, 0);
-  boardGroup.add(backPanel);
+    // Panneau arrière noir translucide, visible des deux côtés
+    const backGeo = new THREE.PlaneGeometry(1.4, 2.2);
+    const backMat = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide
+    });
+    const backPanel = new THREE.Mesh(backGeo, backMat);
+    backPanel.position.set(0, 0, 0);
+    boardGroup.add(backPanel);
 
-  // Cadre néon 3D tout autour (4 barres en BoxGeometry)
-  const frameColor = 0x00f5ff; // cyan néon
-  const frameDepth = 0.03;     // épaisseur en Z
-  const frameThickness = 0.03; // hauteur des barres horizontales / largeur des verticales
-  const frameWidth = 0.98;     // largeur intérieure du cadre
-  const frameHeight = 1.78;    // hauteur intérieure du cadre
+    // Cadre néon 3D tout autour (4 barres BoxGeometry)
+    const frameColorOuter = 0x00f5ff; // cyan
+    const frameColorInner = 0x00ff80; // vert
+    const frameDepth = 0.04;
+    const frameThickness = 0.045;
+    const frameWidth = 1.0;
+    const frameHeight = 1.85;
 
-  const frameMat = new THREE.MeshBasicMaterial({
-    color: frameColor,
-    transparent: true,
-    opacity: 0.95
-  });
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: frameColorOuter,
+      emissive: frameColorOuter,
+      emissiveIntensity: 1.5,
+      metalness: 0.2,
+      roughness: 0.3
+    });
 
-  // Barre horizontale haute
-  const topBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
-  const topBar = new THREE.Mesh(topBarGeo, frameMat);
-  topBar.position.set(0, frameHeight / 2, frameDepth / 2);
-  boardGroup.add(topBar);
+    // Petite lumière néon pour accentuer l'effet
+    const neonLight = new THREE.PointLight(frameColorInner, 0.8, 4, 2.0);
+    neonLight.position.set(0, 0.5, 0.4);
+    boardGroup.add(neonLight);
 
-  // Barre horizontale basse
-  const bottomBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
-  const bottomBar = new THREE.Mesh(bottomBarGeo, frameMat);
-  bottomBar.position.set(0, -frameHeight / 2, frameDepth / 2);
-  boardGroup.add(bottomBar);
+    // Barre horizontale haute
+    const topBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
+    const topBar = new THREE.Mesh(topBarGeo, frameMat);
+    topBar.position.set(0, frameHeight / 2, frameDepth / 2);
+    boardGroup.add(topBar);
 
-  // Barre verticale gauche
-  const leftBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
-  const leftBar = new THREE.Mesh(leftBarGeo, frameMat);
-  leftBar.position.set(-frameWidth / 2, 0, frameDepth / 2);
-  boardGroup.add(leftBar);
+    // Barre horizontale basse
+    const bottomBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
+    const bottomBar = new THREE.Mesh(bottomBarGeo, frameMat);
+    bottomBar.position.set(0, -frameHeight / 2, frameDepth / 2);
+    boardGroup.add(bottomBar);
 
-  // Barre verticale droite
-  const rightBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
-  const rightBar = new THREE.Mesh(rightBarGeo, frameMat);
-  rightBar.position.set(frameWidth / 2, 0, frameDepth / 2);
-  boardGroup.add(rightBar);
+    // Barre verticale gauche
+    const leftBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
+    const leftBar = new THREE.Mesh(leftBarGeo, frameMat);
+    leftBar.position.set(-frameWidth / 2, 0, frameDepth / 2);
+    boardGroup.add(leftBar);
 
-  // Plane vidéo portrait 9:16 (au centre du cadre)
-  const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
-  const videoMat = new THREE.MeshBasicMaterial({
-    map: videoTexture,
-    side: THREE.DoubleSide
-  });
-  videoPlane = new THREE.Mesh(videoGeo, videoMat);
-  videoPlane.position.set(0, -0.1, 0.02); // léger décalage vers le bas
-  boardGroup.add(videoPlane);
+    // Barre verticale droite
+    const rightBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
+    const rightBar = new THREE.Mesh(rightBarGeo, frameMat);
+    rightBar.position.set(frameWidth / 2, 0, frameDepth / 2);
+    boardGroup.add(rightBar);
 
-  // Bandeau infos AU-DESSUS de la vidéo, au-dessus de la barre néon
-  const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
-  infoTexture = new THREE.CanvasTexture(infoCanvas);
-  const infoMat = new THREE.MeshBasicMaterial({
-    map: infoTexture,
-    transparent: true,
-    side: THREE.DoubleSide
-  });
-  infoPlane = new THREE.Mesh(infoGeo, infoMat);
+    // Plane vidéo portrait 9:16 (au centre du cadre)
+    const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
+    const videoMat = new THREE.MeshBasicMaterial({
+      map: videoTexture,
+      side: THREE.DoubleSide
+    });
+    videoPlane = new THREE.Mesh(videoGeo, videoMat);
+    videoPlane.position.set(0, -0.1, 0.02);
+    boardGroup.add(videoPlane);
 
-  // y = 1.15 -> bas du bandeau à 0.95, donc au-dessus de la barre néon (qui monte jusqu'à ~0.905)
-  // z = 0.04 -> un peu plus devant que le cadre (frameDepth/2 = 0.015)
-  infoPlane.position.set(0, 1.15, 0.04);
-  boardGroup.add(infoPlane);
+    // Bandeau infos AU-DESSUS de la vidéo, au-dessus de la barre néon
+    const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
+    infoTexture = new THREE.CanvasTexture(infoCanvas);
+    const infoMat = new THREE.MeshBasicMaterial({
+      map: infoTexture,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    infoPlane = new THREE.Mesh(infoGeo, infoMat);
+    infoPlane.position.set(0, 1.15, 0.04);
+    boardGroup.add(infoPlane);
 
+    // Logo UrbainAR sur le côté droit
+    const logoWidth = 0.35;
+    const logoHeight = 0.35;
+    const logoGeo = new THREE.PlaneGeometry(logoWidth, logoHeight);
 
-  scene.add(boardGroup);
-}
+    const logoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/logo-urbainar.png';
+    const logoTexture = new THREE.TextureLoader().load(logoUrl);
 
+    const logoMat = new THREE.MeshBasicMaterial({
+      map: logoTexture,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
 
+    const logoPlane = new THREE.Mesh(logoGeo, logoMat);
+    logoPlane.position.set(
+      frameWidth / 2 + logoWidth / 2 + 0.1, // à droite du cadre
+      0.0,                                   // centré verticalement
+      0.05                                   // un peu devant le panneau
+    );
+    boardGroup.add(logoPlane);
+
+    scene.add(boardGroup);
+  }
 
   function onSelect() {
     if (!reticle.visible || !videoTexture) return;
@@ -368,10 +396,10 @@ function createBoardIfNeeded() {
     }
 
     // Métadonnées parallèles (même nombre que videos) - optionnel
-    usernames = parseListParam(params.get('usernames'), videos.length, 'Utilisateur');
-    dates = parseListParam(params.get('dates'), videos.length, 'Date inconnue');
-    likesList = parseNumberListParam(params.get('likes'), videos.length, 0);
-    viewsList = parseNumberListParam(params.get('views'), videos.length, 0);
+    usernames = parseListParam(params.get('usernames'), videos.length, 'UrbainAR');
+    dates = parseListParam(params.get('dates'), videos.length, 'Date 12/2025');
+    likesList = parseNumberListParam(params.get('likes'), videos.length, 124);
+    viewsList = parseNumberListParam(params.get('views'), videos.length, 654);
 
     document.getElementById('video-count').textContent =
       videos.length > 0
@@ -413,16 +441,16 @@ function createBoardIfNeeded() {
     infoCanvas.width = 512;
     infoCanvas.height = 256;
     infoCtx = infoCanvas.getContext('2d');
-    drawInfoText(0); // initial
+    drawInfoText(0);
   }
 
   function drawInfoText(index) {
     if (!infoCtx) return;
 
-    const username = usernames[index] || 'Utilisateur';
-    const date = dates[index] || 'Date inconnue';
-    const likes = likesList[index] ?? 0;
-    const views = viewsList[index] ?? 0;
+    const username = usernames[index] || 'UrbainAR';
+    const date = dates[index] || 'Date 12/2025';
+    const likes = likesList[index] ?? 124;
+    const views = viewsList[index] ?? 654;
 
     infoCtx.clearRect(0, 0, infoCanvas.width, infoCanvas.height);
 
@@ -449,7 +477,6 @@ function createBoardIfNeeded() {
     infoCtx.fillStyle = '#ffffff';
     infoCtx.font = 'bold 32px system-ui';
     infoCtx.textBaseline = 'top';
-
     infoCtx.fillText(username, 40, 40);
 
     infoCtx.font = '24px system-ui';
