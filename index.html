@@ -192,20 +192,22 @@
       miniMap.setCenter(pos);
     }
 
-    function updateStreetName(lat, lng) {
-      if (!geocoder) return;
+function updateStreetName(lat, lng) {
+  if (!window.google || !google.maps || !geocoder || !geocoder.geocode) return;
 
-      geocoder.geocode({ location: { lat, lng } })
-        .then(res => {
-          if (!res.results || !res.results[0]) return;
-          const address = res.results[0].formatted_address;
-          if (address === lastStreetText) return;
-          lastStreetText = address;
-          const lbl = document.getElementById('street-label');
-          if (lbl) lbl.textContent = address;
-        })
-        .catch(() => {});
+  geocoder.geocode(
+    { location: { lat, lng } },
+    (results, status) => {
+      if (status !== 'OK' || !results || !results[0]) return;
+      const address = results[0].formatted_address;
+      if (address === lastStreetText) return;
+      lastStreetText = address;
+      const lbl = document.getElementById('street-label');
+      if (lbl) lbl.textContent = address;
     }
+  );
+}
+
 
     // Pour plus tard : afficher d'autres vidéos sur la mini-map
     function showNearbyVideoMarkers(nearbyVideos) {
