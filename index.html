@@ -111,6 +111,40 @@
       opacity: 0.35;
       cursor: not-allowed;
     }
+
+    /* Mini-map circulaire en bas à droite */
+    #mini-map-wrapper {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.7);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+      z-index: 20;
+      background: #000;
+    }
+
+    #mini-map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Etiquette nom de rue au-dessus de la mini-map */
+    #street-label {
+      position: fixed;
+      bottom: 210px; /* 180 + marge ~30 */
+      right: 18px;
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      max-width: 60vw;
+      z-index: 21;
+    }
   </style>
 </head>
 <body>
@@ -131,6 +165,12 @@
   <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF">🔊</button>
   <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante" disabled>➡️</button>
 </div>
+
+<!-- Mini-map circulaire + label rue -->
+<div id="mini-map-wrapper">
+  <div id="mini-map"></div>
+</div>
+<div id="street-label"></div>
 
 <!-- Vidéo HTML5 source pour la texture principale -->
 <video
@@ -175,17 +215,17 @@
   let frameVideoTexture = null;
   let framePlane = null;
 
-  // Panneau 3D : group global (fond + vidéo + bandeau infos + logo + colonne sociale + cadre animé)
+  // Panneau 3D global
   let boardGroup = null;
   let groundPlane = null;
-  let frameMatGlobal = null; // pour les effets animés sur le cadre
+  let frameMatGlobal = null;
   let videoPlane = null;
   let infoPlane = null;
   let infoTexture = null;
   let infoCanvas = null;
   let infoCtx = null;
 
-  // Colonne sociale (likes / vues façon TikTok)
+  // Colonne sociale
   let socialPlane = null;
   let socialTexture = null;
   let socialCanvas = null;
@@ -199,6 +239,13 @@
   let dates = [];
   let likesList = [];
   let viewsList = [];
+
+  // --- Mini-map & géolocalisation ---
+  let miniMap = null;
+  let miniUserMarker = null;
+  let miniVideoMarkers = [];
+  let geocoder = null;
+  let lastStreetText = '';
 
   function init() {
     scene = new THREE.Scene();
@@ -216,7 +263,6 @@
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // Lumière d'ambiance pour les matériaux Standard
     const ambient = new THREE.AmbientLight(0xffffff, 0.3);
     scene.add(ambient);
 
@@ -228,7 +274,7 @@
     reticle.visible = false;
     scene.add(reticle);
 
-    // Bouton WebXR : centré et plus haut que la barre du bas
+    // Bouton WebXR
     const arButton = ARButton.createButton(renderer, {
       requiredFeatures: ['hit-test']
     });
@@ -239,7 +285,6 @@
     arButton.style.zIndex = '11';
     document.body.appendChild(arButton);
 
-    // Session AR
     renderer.xr.addEventListener('sessionstart', async () => {
       const session = renderer.xr.getSession();
       const viewerSpace = await session.requestReferenceSpace('viewer');
@@ -266,6 +311,9 @@
       loadVideo(0);
       playCurrentVideo();
     }
+
+    // Démarre la géolocalisation pour la mini-map + nom de rue
+    startGeoTracking();
   }
 
   function onWindowResize() {
@@ -279,7 +327,7 @@
 
     boardGroup = new THREE.Group();
 
-    // Panneau arrière ANIMÉ : vidéo de cadre
+    // Panneau arrière : vidéo de cadre
     const frameGeo = new THREE.PlaneGeometry(1.4, 2.2);
     const frameMat = new THREE.MeshBasicMaterial({
       map: frameVideoTexture,
@@ -289,9 +337,9 @@
     framePlane.position.set(0, 0, 0);
     boardGroup.add(framePlane);
 
-    // Cadre néon 3D tout autour (4 barres BoxGeometry)
-    const frameColorOuter = 0x00f5ff; // cyan
-    const frameColorInner = 0x00ff80; // vert
+    // Cadre néon
+    const frameColorOuter = 0x00f5ff;
+    const frameColorInner = 0x00ff80;
     const frameDepth = 0.04;
     const frameThickness = 0.045;
     const frameWidth = 1.0;
@@ -306,36 +354,31 @@
     });
     frameMatGlobal = frameMatNeon;
 
-    // Petite lumière néon pour accentuer l'effet
     const neonLight = new THREE.PointLight(frameColorInner, 0.8, 4, 2.0);
     neonLight.position.set(0, 0.5, 0.4);
     boardGroup.add(neonLight);
 
-    // Barre horizontale haute
     const topBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
     const topBar = new THREE.Mesh(topBarGeo, frameMatNeon);
     topBar.position.set(0, frameHeight / 2, frameDepth / 2);
     boardGroup.add(topBar);
 
-    // Barre horizontale basse
     const bottomBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
     const bottomBar = new THREE.Mesh(bottomBarGeo, frameMatNeon);
     bottomBar.position.set(0, -frameHeight / 2, frameDepth / 2);
     boardGroup.add(bottomBar);
 
-    // Barre verticale gauche
     const leftBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
     const leftBar = new THREE.Mesh(leftBarGeo, frameMatNeon);
     leftBar.position.set(-frameWidth / 2, 0, frameDepth / 2);
     boardGroup.add(leftBar);
 
-    // Barre verticale droite
     const rightBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
     const rightBar = new THREE.Mesh(rightBarGeo, frameMatNeon);
     rightBar.position.set(frameWidth / 2, 0, frameDepth / 2);
     boardGroup.add(rightBar);
 
-    // Sol / ombre sous le panneau (disque sombre horizontal, fake shadow)
+    // Sol / ombre
     const groundGeo = new THREE.CircleGeometry(1.2, 48);
     const groundMat = new THREE.MeshBasicMaterial({
       color: 0x000000,
@@ -347,7 +390,7 @@
     groundPlane.position.set(0, -frameHeight / 2 - 0.05, 0);
     boardGroup.add(groundPlane);
 
-    // Plane vidéo portrait 9:16 (au centre du cadre)
+    // Plane vidéo
     const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
     const videoMat = new THREE.MeshBasicMaterial({
       map: videoTexture,
@@ -357,7 +400,7 @@
     videoPlane.position.set(0, -0.1, 0.02);
     boardGroup.add(videoPlane);
 
-    // Bandeau infos AU-DESSUS de la vidéo
+    // Bandeau infos
     const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
     infoTexture = new THREE.CanvasTexture(infoCanvas);
     const infoMat = new THREE.MeshBasicMaterial({
@@ -369,7 +412,7 @@
     infoPlane.position.set(0, 1.15, 0.04);
     boardGroup.add(infoPlane);
 
-    // Colonne sociale TikTok à droite de la vidéo
+    // Colonne sociale
     const socialGeo = new THREE.PlaneGeometry(0.28, 0.9);
     socialTexture = new THREE.CanvasTexture(socialCanvas);
     const socialMat = new THREE.MeshBasicMaterial({
@@ -381,7 +424,7 @@
     socialPlane.position.set(0.9 / 2 + 0.18, -0.1, 0.04);
     boardGroup.add(socialPlane);
 
-    // Logo UrbainAR à droite du bandeau nom/date
+    // Logo UrbainAR
     const logoWidth = 0.35;
     const logoHeight = 0.35;
     const logoGeo = new THREE.PlaneGeometry(logoWidth, logoHeight);
@@ -411,10 +454,8 @@
 
     createBoardIfNeeded();
 
-    // Positionner le panneau 3D sur la pose détectée
     boardGroup.position.setFromMatrixPosition(reticle.matrix);
 
-    // Orientation : panneau vertical, pivot Y uniquement
     const camPos = new THREE.Vector3();
     camera.getWorldPosition(camPos);
 
@@ -432,20 +473,16 @@
   function parseUrlParamsAndLoadVideos() {
     const params = new URLSearchParams(window.location.search);
 
-    // 1) Mode multi : ?videos=url1,url2,url3
     const videosParam = params.get('videos');
-
     if (videosParam) {
       videos = videosParam.split(',').map(v => v.trim()).filter(v => v.length > 0);
     } else {
-      // 2) Compat ancien : ?video=...
       const videoUrl = params.get('video');
       if (videoUrl) {
         videos = [videoUrl];
       }
     }
 
-    // Métadonnées parallèles (même nombre que videos) - optionnel
     usernames = parseListParam(params.get('usernames'), videos.length, 'UrbainAR');
     dates = parseListParam(params.get('dates'), videos.length, 'Date 12/2025');
     likesList = parseNumberListParam(params.get('likes'), videos.length, 124);
@@ -501,14 +538,12 @@
   }
 
   function setupInfoCanvas() {
-    // Bandeau infos (username + date)
     infoCanvas = document.createElement('canvas');
     infoCanvas.width = 512;
     infoCanvas.height = 256;
     infoCtx = infoCanvas.getContext('2d');
     drawInfoText(0);
 
-    // Colonne sociale (TikTok-style à droite)
     socialCanvas = document.createElement('canvas');
     socialCanvas.width = 256;
     socialCanvas.height = 512;
@@ -524,7 +559,6 @@
 
     infoCtx.clearRect(0, 0, infoCanvas.width, infoCanvas.height);
 
-    // Fond arrondi sombre
     infoCtx.fillStyle = 'rgba(0,0,0,0.75)';
     const r = 28;
     const w = infoCanvas.width - 40;
@@ -569,7 +603,6 @@
 
     socialCtx.clearRect(0, 0, w, h);
 
-    // Fond vertical arrondi
     socialCtx.fillStyle = 'rgba(0,0,0,0.75)';
     const r = 40;
     const padX = 40;
@@ -593,7 +626,6 @@
     socialCtx.textAlign = 'center';
     socialCtx.textBaseline = 'middle';
 
-    // Bloc LIKE (haut)
     const centerX = w / 2;
     let centerY = padY + boxH * 0.30;
 
@@ -604,7 +636,6 @@
     socialCtx.font = '28px system-ui';
     socialCtx.fillText(`${likes}`, centerX, centerY + 18);
 
-    // Bloc VUES (bas)
     centerY = padY + boxH * 0.68;
 
     socialCtx.font = '40px system-ui';
@@ -726,7 +757,7 @@
     }
   };
 
-  // Fallback : premier tap écran → autoriser play() sur Android
+  // Fallback : premier tap écran → autoriser play()
   window.addEventListener('click', () => {
     if (videoElement && videoElement.paused) {
       videoElement.play().catch(() => {});
@@ -736,7 +767,107 @@
     }
   }, { once: true });
 
-  // Boucle de rendu WebXR + animations néon / ombre
+  // -------- Mini-map + nom de rue --------
+
+  // Appelée par Google Maps API (callback)
+  window.initMiniMap = function () {
+    const el = document.getElementById('mini-map');
+    if (!el || !window.google || !google.maps) return;
+
+    miniMap = new google.maps.Map(el, {
+      center: { lat: 48.8566, lng: 2.3522 },
+      zoom: 16,
+      disableDefaultUI: true
+    });
+
+    geocoder = new google.maps.Geocoder();
+  };
+
+  function updateMiniMapUserPosition(lat, lng) {
+    if (!miniMap || !window.google || !google.maps) return;
+    const pos = { lat, lng };
+
+    if (!miniUserMarker) {
+      miniUserMarker = new google.maps.Marker({
+        position: pos,
+        map: miniMap,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 6,
+          fillColor: '#00aaff',
+          fillOpacity: 1,
+          strokeWeight: 0
+        }
+      });
+    } else {
+      miniUserMarker.setPosition(pos);
+    }
+    miniMap.setCenter(pos);
+  }
+
+  function updateStreetName(lat, lng) {
+    if (!geocoder) return;
+
+    geocoder.geocode({ location: { lat, lng } })
+      .then(res => {
+        if (!res.results || !res.results[0]) return;
+        const address = res.results[0].formatted_address;
+        if (address === lastStreetText) return;
+        lastStreetText = address;
+        const lbl = document.getElementById('street-label');
+        if (lbl) lbl.textContent = address;
+      })
+      .catch(() => {});
+  }
+
+  // Pour plus tard : afficher les autres vidéos proches
+  function showNearbyVideoMarkers(nearbyVideos) {
+    if (!miniMap || !window.google || !google.maps) return;
+
+    miniVideoMarkers.forEach(m => m.setMap(null));
+    miniVideoMarkers = [];
+
+    nearbyVideos.forEach(v => {
+      const marker = new google.maps.Marker({
+        position: { lat: v.lat, lng: v.lng },
+        map: miniMap,
+        title: v.title || 'Vidéo UrbainAR'
+      });
+
+      marker.addListener('click', () => {
+        const idx = videos.indexOf(v.url);
+        if (idx >= 0) {
+          loadVideo(idx);
+          playCurrentVideo();
+        }
+      });
+
+      miniVideoMarkers.push(marker);
+    });
+  }
+
+  // Géolocalisation continue du navigateur
+  function startGeoTracking() {
+    if (!('geolocation' in navigator)) return;
+
+    navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        updateMiniMapUserPosition(latitude, longitude);
+        updateStreetName(latitude, longitude);
+      },
+      (err) => {
+        console.warn('Geo error', err);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 15000
+      }
+    );
+  }
+
+  // Boucle de rendu WebXR
   function render(timestamp, frame) {
     const session = renderer.xr.getSession();
     if (session && hitTestSourceRequested && hitTestSource && frame) {
@@ -753,7 +884,6 @@
       }
     }
 
-    // Effets animés (néon + ombre)
     const t = timestamp * 0.001;
 
     if (frameMatGlobal) {
@@ -781,6 +911,11 @@
     init();
   }
 </script>
+
+<!-- Google Maps JavaScript API (clé à remplacer) -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDGe5utx89UUDQllkr3nC5ex_wk4RT-aPo&callback=initMiniMap" async defer></script>
+
+
 
 </body>
 </html>
