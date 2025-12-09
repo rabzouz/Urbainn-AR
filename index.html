@@ -112,11 +112,15 @@
       cursor: not-allowed;
     }
 
-    /* Mini-map circulaire en bas à droite */
+    /* Mini-map circulaire en bas à droite (tu peux passer en bas-centre si tu veux) */
     #mini-map-wrapper {
       position: fixed;
       bottom: 18px;
       right: 18px;
+      /* si tu veux en bas-centre, remplace right:18px par :
+         left: 50%;
+         transform: translateX(-50%);
+      */
       width: 180px;
       height: 180px;
       border-radius: 50%;
