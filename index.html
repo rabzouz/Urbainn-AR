@@ -146,6 +146,122 @@
       z-index: 21;
     }
   </style>
+
+  <!-- Google Maps JavaScript API avec callback initMiniMap -->
+  <script>
+    // Variables globales Maps + géoloc
+    let miniMap = null;
+    let miniUserMarker = null;
+    let miniVideoMarkers = [];
+    let geocoder = null;
+    let lastStreetText = '';
+
+    // Fonction callback appelée par Google Maps quand la lib est chargée
+    function initMiniMap() {
+      const el = document.getElementById('mini-map');
+      if (!el || !window.google || !google.maps) return;
+
+      miniMap = new google.maps.Map(el, {
+        center: { lat: 48.8566, lng: 2.3522 },
+        zoom: 16,
+        disableDefaultUI: true
+      });
+
+      geocoder = new google.maps.Geocoder();
+    }
+
+    function updateMiniMapUserPosition(lat, lng) {
+      if (!miniMap || !window.google || !google.maps) return;
+      const pos = { lat, lng };
+
+      if (!miniUserMarker) {
+        miniUserMarker = new google.maps.Marker({
+          position: pos,
+          map: miniMap,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 6,
+            fillColor: '#00aaff',
+            fillOpacity: 1,
+            strokeWeight: 0
+          }
+        });
+      } else {
+        miniUserMarker.setPosition(pos);
+      }
+      miniMap.setCenter(pos);
+    }
+
+    function updateStreetName(lat, lng) {
+      if (!geocoder) return;
+
+      geocoder.geocode({ location: { lat, lng } })
+        .then(res => {
+          if (!res.results || !res.results[0]) return;
+          const address = res.results[0].formatted_address;
+          if (address === lastStreetText) return;
+          lastStreetText = address;
+          const lbl = document.getElementById('street-label');
+          if (lbl) lbl.textContent = address;
+        })
+        .catch(() => {});
+    }
+
+    // Pour plus tard : afficher d'autres vidéos sur la mini-map
+    function showNearbyVideoMarkers(nearbyVideos) {
+      if (!miniMap || !window.google || !google.maps) return;
+
+      miniVideoMarkers.forEach(m => m.setMap(null));
+      miniVideoMarkers = [];
+
+      nearbyVideos.forEach(v => {
+        const marker = new google.maps.Marker({
+          position: { lat: v.lat, lng: v.lng },
+          map: miniMap,
+          title: v.title || 'Vidéo UrbainAR'
+        });
+
+        marker.addListener('click', () => {
+          if (window.loadVideo && window.playCurrentVideo) {
+            const idx = window.videos ? window.videos.indexOf(v.url) : -1;
+            if (idx >= 0) {
+              window.loadVideo(idx);
+              window.playCurrentVideo();
+            }
+          }
+        });
+
+        miniVideoMarkers.push(marker);
+      });
+    }
+
+    // Géolocalisation continue du navigateur (appelée par le script AR)
+    function startGeoTracking() {
+      if (!('geolocation' in navigator)) return;
+
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          updateMiniMapUserPosition(latitude, longitude);
+          updateStreetName(latitude, longitude);
+        },
+        (err) => {
+          console.warn('Geo error', err);
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 5000,
+          timeout: 15000
+        }
+      );
+    }
+
+    // Expose pour le module Three.js
+    window.startGeoTracking = startGeoTracking;
+  </script>
+
+  <!-- Charge la librairie Maps et appelle initMiniMap quand c'est prêt -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDGe5utx89UUDQllkr3nC5ex_wk4RT-aPo&callback=initMiniMap&loading=async" async defer></script>
 </head>
 <body>
 
@@ -172,7 +288,7 @@
 </div>
 <div id="street-label"></div>
 
-<!-- Vidéo HTML5 source pour la texture principale -->
+<!-- Vidéos HTML5 pour la texture -->
 <video
   id="video"
   src=""
@@ -184,7 +300,6 @@
   style="display:none">
 </video>
 
-<!-- Vidéo HTML5 pour le CADRE ANIMÉ -->
 <video
   id="frameVideo"
   src=""
@@ -210,12 +325,10 @@
   let videoTexture = null;
   let soundEnabled = true;
 
-  // Vidéo de cadre animé
   let frameVideoElement = null;
   let frameVideoTexture = null;
   let framePlane = null;
 
-  // Panneau 3D global
   let boardGroup = null;
   let groundPlane = null;
   let frameMatGlobal = null;
@@ -225,27 +338,19 @@
   let infoCanvas = null;
   let infoCtx = null;
 
-  // Colonne sociale
   let socialPlane = null;
   let socialTexture = null;
   let socialCanvas = null;
   let socialCtx = null;
 
-  // Liste des vidéos et métadonnées
-  let videos = [];          // URLs
+  // On expose videos / loadVideo / playCurrentVideo pour showNearbyVideoMarkers
+  window.videos = [];
   let currentIndex = 0;
 
   let usernames = [];
   let dates = [];
   let likesList = [];
   let viewsList = [];
-
-  // --- Mini-map & géolocalisation ---
-  let miniMap = null;
-  let miniUserMarker = null;
-  let miniVideoMarkers = [];
-  let geocoder = null;
-  let lastStreetText = '';
 
   function init() {
     scene = new THREE.Scene();
@@ -266,7 +371,6 @@
     const ambient = new THREE.AmbientLight(0xffffff, 0.3);
     scene.add(ambient);
 
-    // Réticule
     const ringGeo = new THREE.RingGeometry(0.05, 0.06, 32).rotateX(-Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     reticle = new THREE.Mesh(ringGeo, ringMat);
@@ -274,7 +378,6 @@
     reticle.visible = false;
     scene.add(reticle);
 
-    // Bouton WebXR
     const arButton = ARButton.createButton(renderer, {
       requiredFeatures: ['hit-test']
     });
@@ -307,13 +410,15 @@
     setupFrameVideoElement();
     setupInfoCanvas();
 
-    if (videos.length > 0) {
+    if (window.videos.length > 0) {
       loadVideo(0);
       playCurrentVideo();
     }
 
-    // Démarre la géolocalisation pour la mini-map + nom de rue
-    startGeoTracking();
+    // Démarre la géoloc pour la mini‑map + rue
+    if (window.startGeoTracking) {
+      window.startGeoTracking();
+    }
   }
 
   function onWindowResize() {
@@ -327,7 +432,6 @@
 
     boardGroup = new THREE.Group();
 
-    // Panneau arrière : vidéo de cadre
     const frameGeo = new THREE.PlaneGeometry(1.4, 2.2);
     const frameMat = new THREE.MeshBasicMaterial({
       map: frameVideoTexture,
@@ -337,7 +441,6 @@
     framePlane.position.set(0, 0, 0);
     boardGroup.add(framePlane);
 
-    // Cadre néon
     const frameColorOuter = 0x00f5ff;
     const frameColorInner = 0x00ff80;
     const frameDepth = 0.04;
@@ -378,7 +481,6 @@
     rightBar.position.set(frameWidth / 2, 0, frameDepth / 2);
     boardGroup.add(rightBar);
 
-    // Sol / ombre
     const groundGeo = new THREE.CircleGeometry(1.2, 48);
     const groundMat = new THREE.MeshBasicMaterial({
       color: 0x000000,
@@ -390,7 +492,6 @@
     groundPlane.position.set(0, -frameHeight / 2 - 0.05, 0);
     boardGroup.add(groundPlane);
 
-    // Plane vidéo
     const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
     const videoMat = new THREE.MeshBasicMaterial({
       map: videoTexture,
@@ -400,7 +501,6 @@
     videoPlane.position.set(0, -0.1, 0.02);
     boardGroup.add(videoPlane);
 
-    // Bandeau infos
     const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
     infoTexture = new THREE.CanvasTexture(infoCanvas);
     const infoMat = new THREE.MeshBasicMaterial({
@@ -412,7 +512,6 @@
     infoPlane.position.set(0, 1.15, 0.04);
     boardGroup.add(infoPlane);
 
-    // Colonne sociale
     const socialGeo = new THREE.PlaneGeometry(0.28, 0.9);
     socialTexture = new THREE.CanvasTexture(socialCanvas);
     const socialMat = new THREE.MeshBasicMaterial({
@@ -424,20 +523,16 @@
     socialPlane.position.set(0.9 / 2 + 0.18, -0.1, 0.04);
     boardGroup.add(socialPlane);
 
-    // Logo UrbainAR
     const logoWidth = 0.35;
     const logoHeight = 0.35;
     const logoGeo = new THREE.PlaneGeometry(logoWidth, logoHeight);
-
     const logoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/logoUrbainar.png';
     const logoTexture = new THREE.TextureLoader().load(logoUrl);
-
     const logoMat = new THREE.MeshBasicMaterial({
       map: logoTexture,
       transparent: true,
       side: THREE.DoubleSide
     });
-
     const logoPlane = new THREE.Mesh(logoGeo, logoMat);
     logoPlane.position.set(
       0.9 / 2 + logoWidth / 2 + 0.08,
@@ -468,29 +563,27 @@
     boardGroup.rotation.set(0, angleY, 0);
   }
 
-  // ------- Gestion des vidéos + métadonnées -------
-
   function parseUrlParamsAndLoadVideos() {
     const params = new URLSearchParams(window.location.search);
 
     const videosParam = params.get('videos');
     if (videosParam) {
-      videos = videosParam.split(',').map(v => v.trim()).filter(v => v.length > 0);
+      window.videos = videosParam.split(',').map(v => v.trim()).filter(v => v.length > 0);
     } else {
       const videoUrl = params.get('video');
       if (videoUrl) {
-        videos = [videoUrl];
+        window.videos = [videoUrl];
       }
     }
 
-    usernames = parseListParam(params.get('usernames'), videos.length, 'UrbainAR');
-    dates = parseListParam(params.get('dates'), videos.length, 'Date 12/2025');
-    likesList = parseNumberListParam(params.get('likes'), videos.length, 124);
-    viewsList = parseNumberListParam(params.get('views'), videos.length, 654);
+    usernames = parseListParam(params.get('usernames'), window.videos.length, 'UrbainAR');
+    dates = parseListParam(params.get('dates'), window.videos.length, 'Date 12/2025');
+    likesList = parseNumberListParam(params.get('likes'), window.videos.length, 124);
+    viewsList = parseNumberListParam(params.get('views'), window.videos.length, 654);
 
     document.getElementById('video-count').textContent =
-      videos.length > 0
-        ? `Vidéo 1/${videos.length}`
+      window.videos.length > 0
+        ? `Vidéo 1/${window.videos.length}`
         : 'Aucune vidéo';
 
     updateNavButtonsState();
@@ -520,7 +613,7 @@
     });
 
     videoTexture = new THREE.VideoTexture(videoElement);
-    videoTexture.encoding = THREE.sRGBEncoding;
+    videoTexture.colorSpace = THREE.SRGBColorSpace;
   }
 
   function setupFrameVideoElement() {
@@ -534,7 +627,7 @@
     frameVideoElement.load();
 
     frameVideoTexture = new THREE.VideoTexture(frameVideoElement);
-    frameVideoTexture.encoding = THREE.sRGBEncoding;
+    frameVideoTexture.colorSpace = THREE.SRGBColorSpace;
   }
 
   function setupInfoCanvas() {
@@ -650,8 +743,8 @@
   }
 
   function loadVideo(index) {
-    if (!videos || videos.length === 0) return;
-    if (index < 0 || index >= videos.length) return;
+    if (!window.videos || window.videos.length === 0) return;
+    if (index < 0 || index >= window.videos.length) return;
 
     currentIndex = index;
 
@@ -659,19 +752,19 @@
       videoElement = document.getElementById('video');
     }
 
-    const url = videos[index];
+    const url = window.videos[index];
     videoElement.src = url;
     videoElement.muted = !soundEnabled;
     videoElement.load();
 
     document.getElementById('video-title').textContent = 'Vidéo UrbainAR';
     document.getElementById('video-meta').textContent =
-      videos.length > 1
+      window.videos.length > 1
         ? 'Flèches pour changer de vidéo à ce spot.'
         : 'Vidéo depuis UrbainAR (une seule vidéo).';
 
     document.getElementById('video-count').textContent =
-      `Vidéo ${index + 1}/${videos.length}`;
+      `Vidéo ${index + 1}/${window.videos.length}`;
 
     drawInfoText(index);
     drawSocialColumn(index);
@@ -679,6 +772,7 @@
 
     console.log('▶️ Vidéo chargée index', index, url);
   }
+  window.loadVideo = loadVideo;
 
   function updateNavButtonsState() {
     const btnPrev = document.getElementById('btn-prev');
@@ -686,12 +780,12 @@
 
     if (!btnPrev || !btnNext) return;
 
-    if (videos.length <= 1) {
+    if (window.videos.length <= 1) {
       btnPrev.disabled = true;
       btnNext.disabled = true;
     } else {
       btnPrev.disabled = currentIndex === 0;
-      btnNext.disabled = currentIndex === videos.length - 1;
+      btnNext.disabled = currentIndex === window.videos.length - 1;
     }
   }
 
@@ -721,10 +815,10 @@
         }
       });
   }
+  window.playCurrentVideo = playCurrentVideo;
 
-  // Navigation
   window.nextVideo = function () {
-    if (currentIndex < videos.length - 1) {
+    if (currentIndex < window.videos.length - 1) {
       loadVideo(currentIndex + 1);
       playCurrentVideo();
     }
@@ -737,7 +831,6 @@
     }
   };
 
-  // Toggle son
   window.toggleSound = function () {
     soundEnabled = !soundEnabled;
     if (videoElement) {
@@ -748,7 +841,6 @@
     btn.title = soundEnabled ? 'Son ON' : 'Son OFF';
   };
 
-  // Fermer
   window.closeAr = function () {
     if (history.length > 1) {
       history.back();
@@ -757,7 +849,6 @@
     }
   };
 
-  // Fallback : premier tap écran → autoriser play()
   window.addEventListener('click', () => {
     if (videoElement && videoElement.paused) {
       videoElement.play().catch(() => {});
@@ -767,107 +858,6 @@
     }
   }, { once: true });
 
-  // -------- Mini-map + nom de rue --------
-
-  // Appelée par Google Maps API (callback)
-  window.initMiniMap = function () {
-    const el = document.getElementById('mini-map');
-    if (!el || !window.google || !google.maps) return;
-
-    miniMap = new google.maps.Map(el, {
-      center: { lat: 48.8566, lng: 2.3522 },
-      zoom: 16,
-      disableDefaultUI: true
-    });
-
-    geocoder = new google.maps.Geocoder();
-  };
-
-  function updateMiniMapUserPosition(lat, lng) {
-    if (!miniMap || !window.google || !google.maps) return;
-    const pos = { lat, lng };
-
-    if (!miniUserMarker) {
-      miniUserMarker = new google.maps.Marker({
-        position: pos,
-        map: miniMap,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 6,
-          fillColor: '#00aaff',
-          fillOpacity: 1,
-          strokeWeight: 0
-        }
-      });
-    } else {
-      miniUserMarker.setPosition(pos);
-    }
-    miniMap.setCenter(pos);
-  }
-
-  function updateStreetName(lat, lng) {
-    if (!geocoder) return;
-
-    geocoder.geocode({ location: { lat, lng } })
-      .then(res => {
-        if (!res.results || !res.results[0]) return;
-        const address = res.results[0].formatted_address;
-        if (address === lastStreetText) return;
-        lastStreetText = address;
-        const lbl = document.getElementById('street-label');
-        if (lbl) lbl.textContent = address;
-      })
-      .catch(() => {});
-  }
-
-  // Pour plus tard : afficher les autres vidéos proches
-  function showNearbyVideoMarkers(nearbyVideos) {
-    if (!miniMap || !window.google || !google.maps) return;
-
-    miniVideoMarkers.forEach(m => m.setMap(null));
-    miniVideoMarkers = [];
-
-    nearbyVideos.forEach(v => {
-      const marker = new google.maps.Marker({
-        position: { lat: v.lat, lng: v.lng },
-        map: miniMap,
-        title: v.title || 'Vidéo UrbainAR'
-      });
-
-      marker.addListener('click', () => {
-        const idx = videos.indexOf(v.url);
-        if (idx >= 0) {
-          loadVideo(idx);
-          playCurrentVideo();
-        }
-      });
-
-      miniVideoMarkers.push(marker);
-    });
-  }
-
-  // Géolocalisation continue du navigateur
-  function startGeoTracking() {
-    if (!('geolocation' in navigator)) return;
-
-    navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        updateMiniMapUserPosition(latitude, longitude);
-        updateStreetName(latitude, longitude);
-      },
-      (err) => {
-        console.warn('Geo error', err);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 15000
-      }
-    );
-  }
-
-  // Boucle de rendu WebXR
   function render(timestamp, frame) {
     const session = renderer.xr.getSession();
     if (session && hitTestSourceRequested && hitTestSource && frame) {
@@ -902,7 +892,6 @@
     renderer.render(scene, camera);
   }
 
-  // Démarrage
   if (!('xr' in navigator)) {
     document.getElementById('video-meta').textContent =
       "WebXR AR non supporté sur ce navigateur (ouvre dans Chrome Android).";
@@ -911,11 +900,6 @@
     init();
   }
 </script>
-
-<!-- Google Maps JavaScript API (clé à remplacer) -->
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDGe5utx89UUDQllkr3nC5ex_wk4RT-aPo&callback=initMiniMap" async defer></script>
-
-
 
 </body>
 </html>
