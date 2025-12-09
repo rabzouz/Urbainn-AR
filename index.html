@@ -147,7 +147,7 @@
     }
   </style>
 
-  <!-- Google Maps JavaScript API avec callback initMiniMap -->
+  <!-- Google Maps JavaScript API + géoloc mini-map -->
   <script>
     // Variables globales Maps + géoloc
     let miniMap = null;
@@ -156,7 +156,7 @@
     let geocoder = null;
     let lastStreetText = '';
 
-    // Fonction callback appelée par Google Maps quand la lib est chargée
+    // Callback appelé par Google Maps quand la lib est chargée
     function initMiniMap() {
       const el = document.getElementById('mini-map');
       if (!el || !window.google || !google.maps) return;
@@ -192,22 +192,21 @@
       miniMap.setCenter(pos);
     }
 
-function updateStreetName(lat, lng) {
-  if (!window.google || !google.maps || !geocoder || !geocoder.geocode) return;
+    function updateStreetName(lat, lng) {
+      if (!window.google || !google.maps || !geocoder || !geocoder.geocode) return;
 
-  geocoder.geocode(
-    { location: { lat, lng } },
-    (results, status) => {
-      if (status !== 'OK' || !results || !results[0]) return;
-      const address = results[0].formatted_address;
-      if (address === lastStreetText) return;
-      lastStreetText = address;
-      const lbl = document.getElementById('street-label');
-      if (lbl) lbl.textContent = address;
+      geocoder.geocode(
+        { location: { lat, lng } },
+        (results, status) => {
+          if (status !== 'OK' || !results || !results[0]) return;
+          const address = results[0].formatted_address;
+          if (address === lastStreetText) return;
+          lastStreetText = address;
+          const lbl = document.getElementById('street-label');
+          if (lbl) lbl.textContent = address;
+        }
+      );
     }
-  );
-}
-
 
     // Pour plus tard : afficher d'autres vidéos sur la mini-map
     function showNearbyVideoMarkers(nearbyVideos) {
@@ -237,7 +236,7 @@ function updateStreetName(lat, lng) {
       });
     }
 
-    // Géolocalisation continue du navigateur (appelée par le script AR)
+    // Géolocalisation continue du navigateur
     function startGeoTracking() {
       if (!('geolocation' in navigator)) return;
 
