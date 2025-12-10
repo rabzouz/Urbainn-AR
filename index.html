@@ -112,45 +112,21 @@
       cursor: not-allowed;
     }
 
-/* Mini‑map centrée, plus petite */
-#mini-map-wrapper {
-  position: fixed;
-  bottom: 190px;            /* au-dessus du bouton Start AR */
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90px;              /* taille réduite */
-  height: 90px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2px solid rgba(255,255,255,0.7);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.8);
-  z-index: 11;              /* juste sous le bouton Start AR */
-  background: #000;
-}
-
-#mini-map {
-  width: 100%;
-  height: 100%;
-}
-
-/* Bouton START AR centré en bas */
-#start-ar-btn {
-  position: fixed;
-  bottom: 110px;            /* un peu en dessous de la mini‑map */
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 12px 28px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.8);
-  background: linear-gradient(135deg,#00f5ff,#00ff80);
-  color: #000;
-  font-weight: 600;
-  font-size: 15px;
-  letter-spacing: 0.03em;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
-  z-index: 12;              /* au-dessus de la mini‑map */
-}
-
+    /* Mini‑map centrée, plus petite */
+    #mini-map-wrapper {
+      position: fixed;
+      bottom: 190px;           /* au-dessus du bouton ARButton three.js */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90px;             /* taille réduite */
+      height: 90px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.7);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+      z-index: 11;             /* sous le bouton AR */
+      background: #000;
+    }
 
     #mini-map {
       width: 100%;
@@ -160,7 +136,7 @@
     /* Etiquette nom de rue au-dessus de la mini-map */
     #street-label {
       position: fixed;
-      bottom: 310px;      /* 120 + 180 + marge */
+      bottom: 310px;
       right: 18px;
       background: rgba(0,0,0,0.75);
       color: #fff;
@@ -818,38 +794,6 @@
       }
     }
 
-    let noHitFrames = 0;
-
-function render(timestamp, frame) {
-  const session = renderer.xr.getSession();
-  if (session && hitTestSourceRequested && hitTestSource && frame) {
-    const referenceSpace = renderer.xr.getReferenceSpace();
-    const hitTestResults = frame.getHitTestResults(hitTestSource);
-
-    if (hitTestResults.length > 0) {
-      noHitFrames = 0;
-      const hit = hitTestResults[0];
-      const pose = hit.getPose(referenceSpace);
-      reticle.visible = true;
-      reticle.matrix.fromArray(pose.transform.matrix);
-    } else {
-      reticle.visible = false;
-      noHitFrames++;
-      if (noHitFrames > 120) { // ~2s à 60fps
-        const meta = document.getElementById('video-meta');
-        if (meta) {
-          meta.textContent =
-            "Déplace ton téléphone et va dans un endroit plus éclairé, vise un sol contrasté.";
-        }
-      }
-    }
-  }
-
-  // ... le reste de ton render (effets néon, groundPlane, etc.)
-  renderer.render(scene, camera);
-}
-
-
     function playCurrentVideo() {
       if (!videoElement) return;
 
@@ -919,6 +863,9 @@ function render(timestamp, frame) {
       }
     }, { once: true });
 
+    // ---- RENDER UNIQUE AVEC MESSAGE "MANQUE DE LUMIÈRE" ----
+    let noHitFrames = 0;
+
     function render(timestamp, frame) {
       const session = renderer.xr.getSession();
       if (session && hitTestSourceRequested && hitTestSource && frame) {
@@ -926,12 +873,21 @@ function render(timestamp, frame) {
         const hitTestResults = frame.getHitTestResults(hitTestSource);
 
         if (hitTestResults.length > 0) {
+          noHitFrames = 0;
           const hit = hitTestResults[0];
           const pose = hit.getPose(referenceSpace);
           reticle.visible = true;
           reticle.matrix.fromArray(pose.transform.matrix);
         } else {
           reticle.visible = false;
+          noHitFrames++;
+          if (noHitFrames > 120) { // ~2s à 60fps
+            const meta = document.getElementById('video-meta');
+            if (meta) {
+              meta.textContent =
+                "Déplace ton téléphone et va dans un endroit plus éclairé, vise un sol contrasté.";
+            }
+          }
         }
       }
 
