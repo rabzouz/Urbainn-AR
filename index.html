@@ -818,6 +818,38 @@
       }
     }
 
+    let noHitFrames = 0;
+
+function render(timestamp, frame) {
+  const session = renderer.xr.getSession();
+  if (session && hitTestSourceRequested && hitTestSource && frame) {
+    const referenceSpace = renderer.xr.getReferenceSpace();
+    const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+    if (hitTestResults.length > 0) {
+      noHitFrames = 0;
+      const hit = hitTestResults[0];
+      const pose = hit.getPose(referenceSpace);
+      reticle.visible = true;
+      reticle.matrix.fromArray(pose.transform.matrix);
+    } else {
+      reticle.visible = false;
+      noHitFrames++;
+      if (noHitFrames > 120) { // ~2s à 60fps
+        const meta = document.getElementById('video-meta');
+        if (meta) {
+          meta.textContent =
+            "Déplace ton téléphone et va dans un endroit plus éclairé, vise un sol contrasté.";
+        }
+      }
+    }
+  }
+
+  // ... le reste de ton render (effets néon, groundPlane, etc.)
+  renderer.render(scene, camera);
+}
+
+
     function playCurrentVideo() {
       if (!videoElement) return;
 
