@@ -112,37 +112,45 @@
       cursor: not-allowed;
     }
 
-    /* Mini-map en bas à droite mais plus haute pour ne pas recouvrir les flèches */
-    #mini-map-wrapper {
-      position: fixed;
-      bottom: 75px;      /* juste au‑dessus des flèches */
-      right: 16px;
-      width: 130px;      /* au lieu de 180px */
-      height: 130px;
-      border-radius: 50%;
-      overflow: hidden;
-      border: 2px solid rgba(255,255,255,0.7);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.8);
-      z-index: 5;
-      background: #000;
-    }
+/* Mini‑map centrée, plus petite */
+#mini-map-wrapper {
+  position: fixed;
+  bottom: 190px;            /* au-dessus du bouton Start AR */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90px;              /* taille réduite */
+  height: 90px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+  z-index: 11;              /* juste sous le bouton Start AR */
+  background: #000;
+}
 
-    #start-ar-btn {
-      position: fixed;
-      bottom: 140px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 12px 28px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.8);
-      background: linear-gradient(135deg,#00f5ff,#00ff80);
-      color: #000;
-      font-weight: 600;
-      font-size: 15px;
-      letter-spacing: 0.03em;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.6);
-      z-index: 12;
-    }
+#mini-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Bouton START AR centré en bas */
+#start-ar-btn {
+  position: fixed;
+  bottom: 110px;            /* un peu en dessous de la mini‑map */
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.8);
+  background: linear-gradient(135deg,#00f5ff,#00ff80);
+  color: #000;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  z-index: 12;              /* au-dessus de la mini‑map */
+}
+
 
     #mini-map {
       width: 100%;
