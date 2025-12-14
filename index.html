@@ -42,9 +42,7 @@
       z-index: 999;
       pointer-events: none;
     }
-    .ui{
-      pointer-events: auto;
-    }
+    .ui{ pointer-events: auto; }
 
     /* --- Top bar infos vidéo --- */
     #video-info {
@@ -92,10 +90,11 @@
     }
     #btn-close:active { transform: scale(0.98); }
 
-    /* --- Dock contrôles --- */
+    /* --- Dock contrôles (à DROITE) --- */
     #controls-dock{
       position: fixed;
-      left: 14px;
+      right: 14px;
+      left: auto;
       bottom: calc(var(--sheet-peek) + 14px + var(--safe-bottom));
       z-index: 35;
 
@@ -144,22 +143,24 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* --- Volume: zone invisible au bord droit pour “ouvrir” le rail --- */
+    /* --- Volume: zone invisible au bord GAUCHE pour “ouvrir” le rail --- */
     #volume-edge{
       position: fixed;
       top: 0;
-      right: 0;
+      left: 0;
+      right: auto;
       width: 22px;
       height: 100vh;
       z-index: 60;
-      pointer-events: auto; /* doit capter le geste */
+      pointer-events: auto;
       background: transparent;
     }
 
-    /* rail */
+    /* rail volume à GAUCHE */
     #volume-rail{
       position: fixed;
-      right: 10px;
+      left: 10px;
+      right: auto;
       top: 50%;
       transform: translateY(-50%);
       z-index: 61;
@@ -175,7 +176,7 @@
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
 
-      display: none; /* ouvert à la demande */
+      display: none;
       align-items: center;
       justify-content: center;
       padding: 12px 0;
@@ -184,7 +185,7 @@
     }
     #volume-rail.open{ display:flex; }
 
-    /* slider vertical + style multi-navigateurs (thumb/track) */
+    /* slider vertical: writing-mode vertical-lr + direction rtl */
     #volume-slider{
       writing-mode: vertical-lr;
       direction: rtl;
@@ -194,7 +195,6 @@
       cursor: pointer;
       accent-color: var(--accent);
     }
-
     #volume-slider::-webkit-slider-runnable-track{
       background: rgba(255,255,255,0.18);
       border-radius: 999px;
@@ -422,7 +422,6 @@
 </head>
 
 <body>
-  <!-- UI OVERLAY (DOM overlay root) -->
   <div id="xr-overlay">
     <div id="video-info" class="ui">
       <div id="video-title">Chargement…</div>
@@ -436,6 +435,7 @@
 
     <div id="toast"></div>
 
+    <!-- Dock à droite : ⟵ 🔊 ⟶ -->
     <div id="controls-dock" class="ui" aria-label="Contrôles">
       <button id="btn-prev" onclick="prevVideo()" title="Vidéo précédente" disabled>⟵</button>
       <button id="btn-mute" onclick="toggleMute()" title="Muet">🔊</button>
@@ -443,10 +443,9 @@
       <div id="mini-loader" aria-hidden="true"></div>
     </div>
 
-    <!-- Zone bord droit (ouvre le volume) -->
+    <!-- Volume: bord gauche ouvre la barre à gauche -->
     <div id="volume-edge" class="ui" aria-label="Ouvrir le volume"></div>
 
-    <!-- Rail volume -->
     <div id="volume-rail" class="ui" aria-label="Volume">
       <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1" aria-label="Contrôle du volume" />
     </div>
@@ -475,7 +474,7 @@
       <div class="sheetContent" id="sheetContent">
         <div class="emptyState" id="emptyState">
           Aucune vidéo fournie.<br><br>
-          Ouvre avec : <b>?videos=url1,url2</b> (optionnel: usernames, dates, likes, views).
+          Ouvre avec : <b>?videos=url1,url2</b> (optionnel: usernames, timestamps, likes, views).
         </div>
         <div id="videoList"></div>
       </div>
@@ -517,7 +516,7 @@
     let currentIndex = 0;
 
     let usernames = [];
-    let dates = [];
+    let timestamps = []; // <-- publication réelle en ms si tu passes timestamps=
     let likesList = [];
     let viewsList = [];
 
@@ -583,7 +582,7 @@
         const subtitle = document.getElementById('sheetSubtitle');
 
         if (tab === 'help') {
-          subtitle.textContent = "Volume: glisse sur le bord droit pour afficher la barre.";
+          subtitle.textContent = "Volume: glisse sur le bord gauche pour afficher la barre.";
           setExpanded(true);
         } else {
           subtitle.textContent = "Sélectionnez une vidéo, puis Start AR.";
@@ -604,15 +603,16 @@
 
       window.videos.forEach((url, idx) => {
         const title = usernames[idx] ? `@${usernames[idx]}` : 'Vidéo UrbainAR';
-        const meta = `${likesList[idx] ?? 0} likes • ${viewsList[idx] ?? 0} vues • ${dates[idx] ?? ''}`.trim();
+        const dt = formatPublishedAt(idx);
+        const meta = `${likesList[idx] ?? 0} likes • ${viewsList[idx] ?? 0} vues • ${dt}`.trim();
 
         const item = document.createElement('div');
         item.className = 'listItem';
         item.innerHTML = `
           <div class="thumb"></div>
           <div class="meta">
-            <b>${title}</b>
-            <span>${meta}</span>
+            <b>${escapeHtml(title)}</b>
+            <span>${escapeHtml(meta)}</span>
           </div>
         `;
         item.addEventListener('click', () => {
@@ -622,6 +622,15 @@
         });
         list.appendChild(item);
       });
+    }
+
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
 
     // --- Volume UX (edge swipe + auto close) ---
@@ -649,7 +658,7 @@
         openVolume();
         const v = parseFloat(volumeSlider.value || '1');
         if (videoElement) {
-          videoElement.volume = v;          // 0..1 [web:901]
+          videoElement.volume = v;            // 0..1 [web:901]
           videoElement.muted = (v <= 0.001);
         }
         const btn = document.getElementById('btn-mute');
@@ -667,7 +676,7 @@
       const next = (cur > 0.001) ? 0 : 1;
 
       if (volumeSlider) volumeSlider.value = String(next);
-      videoElement.volume = next;
+      videoElement.volume = next;             // 0..1 [web:901]
       videoElement.muted = (next <= 0.001);
 
       const btn = document.getElementById('btn-mute');
@@ -676,12 +685,22 @@
       try { if (videoElement && videoElement.paused) await videoElement.play(); } catch (_) {}
     };
 
-    // --- Play helper ---
+    // --- Date/heure publication ---
+    const fmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" }); // [web:923]
+
+    function formatPublishedAt(idx){
+      const ms = Number(timestamps[idx]);
+      if (!Number.isNaN(ms) && ms > 0) {
+        return fmt.format(new Date(ms));
+      }
+      return "Date inconnue";
+    }
+
     async function tryPlayWithCurrentVolume(){
       if (!videoElement) return;
 
       const vol = parseFloat(volumeSlider?.value || '1');
-      videoElement.volume = vol;            // 0..1 [web:901]
+      videoElement.volume = vol;              // 0..1 [web:901]
       videoElement.muted = (vol <= 0.001);
 
       try {
@@ -702,7 +721,6 @@
       renderer.xr.enabled = true;
       document.body.appendChild(renderer.domElement);
 
-      // reticle + lumière
       scene.add(new THREE.AmbientLight(0xffffff, 0.30));
 
       const ringGeo = new THREE.RingGeometry(0.05, 0.065, 40).rotateX(-Math.PI / 2);
@@ -712,7 +730,6 @@
       reticle.visible = false;
       scene.add(reticle);
 
-      // DOM Overlay (optionnel) : root = #xr-overlay [web:896][web:910]
       const overlayRoot = document.getElementById('xr-overlay');
       const arButton = ARButton.createButton(renderer, {
         requiredFeatures: ['hit-test'],
@@ -759,7 +776,6 @@
         document.getElementById('video-count').textContent = "0 vidéo";
       }
 
-      // 1er geste utilisateur: unlock
       window.addEventListener('pointerup', () => tryPlayWithCurrentVolume(), { once: true });
     }
 
@@ -774,13 +790,11 @@
 
       boardGroup = new THREE.Group();
 
-      // frame video (fond)
       const frameGeo = new THREE.PlaneGeometry(1.4, 2.2);
       const frameMat = new THREE.MeshBasicMaterial({ map: frameVideoTexture, side: THREE.DoubleSide });
       const framePlane = new THREE.Mesh(frameGeo, frameMat);
       boardGroup.add(framePlane);
 
-      // neon frame
       const frameColorOuter = 0x00f5ff;
       const frameColorInner = 0x00ff80;
       const frameDepth = 0.04;
@@ -817,7 +831,6 @@
       rightBar.position.set(frameWidth / 2, 0, frameDepth / 2);
       boardGroup.add(rightBar);
 
-      // “shadow” sol
       const groundGeo = new THREE.CircleGeometry(1.2, 48);
       const groundMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 });
       groundPlane = new THREE.Mesh(groundGeo, groundMat);
@@ -825,14 +838,12 @@
       groundPlane.position.set(0, -frameHeight / 2 - 0.05, 0);
       boardGroup.add(groundPlane);
 
-      // video principale
       const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
       const videoMat = new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide });
       const videoPlane = new THREE.Mesh(videoGeo, videoMat);
       videoPlane.position.set(0, -0.1, 0.02);
       boardGroup.add(videoPlane);
 
-      // bande info
       const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
       infoTexture = new THREE.CanvasTexture(infoCanvas);
       const infoMat = new THREE.MeshBasicMaterial({ map: infoTexture, transparent: true, side: THREE.DoubleSide });
@@ -840,7 +851,6 @@
       infoPlane.position.set(0, 1.15, 0.04);
       boardGroup.add(infoPlane);
 
-      // colonne social
       const socialGeo = new THREE.PlaneGeometry(0.28, 0.9);
       socialTexture = new THREE.CanvasTexture(socialCanvas);
       const socialMat = new THREE.MeshBasicMaterial({ map: socialTexture, transparent: true, side: THREE.DoubleSide });
@@ -848,7 +858,6 @@
       socialPlane.position.set(0.9 / 2 + 0.18, -0.1, 0.04);
       boardGroup.add(socialPlane);
 
-      // logo
       const logoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/logoUrbainar.png';
       const logoTexture = new THREE.TextureLoader().load(logoUrl);
       const logoPlane = new THREE.Mesh(
@@ -892,7 +901,10 @@
       }
 
       usernames = parseListParam(params.get('usernames'), window.videos.length, 'UrbainAR');
-      dates = parseListParam(params.get('dates'), window.videos.length, '12/2025');
+
+      // IMPORTANT: timestamps= liste de millisecondes (publiée à …)
+      timestamps = parseNumberListParam(params.get('timestamps'), window.videos.length, 0);
+
       likesList = parseNumberListParam(params.get('likes'), window.videos.length, 0);
       viewsList = parseNumberListParam(params.get('views'), window.videos.length, 0);
 
@@ -923,7 +935,6 @@
       videoTexture = new THREE.VideoTexture(videoElement);
       videoTexture.colorSpace = THREE.SRGBColorSpace;
 
-      // états réseau/lecture (UX)
       videoElement.addEventListener('waiting', () => { setLoading(true); toast("Chargement vidéo…", 900); });
       videoElement.addEventListener('playing', () => setLoading(false));
       videoElement.addEventListener('canplay', () => setLoading(false));
@@ -967,7 +978,7 @@
       if (!infoCtx) return;
 
       const username = usernames[index] || 'UrbainAR';
-      const date = dates[index] || '12/2025';
+      const publishedAt = formatPublishedAt(index);
 
       infoCtx.clearRect(0, 0, infoCanvas.width, infoCanvas.height);
 
@@ -992,9 +1003,9 @@
       infoCtx.textBaseline = 'top';
       infoCtx.fillText(username, 40, 40);
 
-      infoCtx.font = '24px system-ui';
+      infoCtx.font = '22px system-ui';
       infoCtx.fillStyle = '#cccccc';
-      infoCtx.fillText(date, 40, 86);
+      infoCtx.fillText(publishedAt, 40, 92);
 
       if (infoTexture) infoTexture.needsUpdate = true;
     }
@@ -1060,7 +1071,7 @@
       videoElement.src = url;
 
       const vol = parseFloat(volumeSlider?.value || '1');
-      videoElement.volume = vol;          // 0..1 [web:901]
+      videoElement.volume = vol;              // 0..1 [web:901]
       videoElement.muted = (vol <= 0.001);
 
       setLoading(true);
@@ -1137,7 +1148,6 @@
           reticle.visible = true;
           reticle.matrix.fromArray(pose.transform.matrix);
 
-          // micro animation reticle “pulse”
           const s = 1 + Math.sin(timestamp * 0.008) * 0.12;
           reticle.scale.set(s, s, s);
         } else {
