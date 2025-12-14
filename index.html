@@ -22,7 +22,6 @@
       --radius-xl: 22px;
       --radius-lg: 16px;
 
-      /* bottom sheet peek height */
       --sheet-peek: 92px;
     }
 
@@ -37,7 +36,7 @@
     }
     canvas { display: block; }
 
-    /* --- Top bar infos vidéo sélectionnée --- */
+    /* --- Top bar infos vidéo --- */
     #video-info {
       position: fixed;
       top: calc(12px + var(--safe-top));
@@ -85,97 +84,156 @@
     }
     #btn-close:active { transform: scale(0.98); }
 
-    /* --- Contrôles (déplacés en bas à gauche pour ne pas gêner le bouton AR) --- */
-    #video-nav {
+    /* --- Dock contrôles (bas gauche, mieux structuré) --- */
+    #controls-dock{
       position: fixed;
       left: 14px;
       bottom: calc(var(--sheet-peek) + 14px + var(--safe-bottom));
       z-index: 35;
+
       display: flex;
-      gap: 10px;
       align-items: center;
-      padding: 10px;
+      gap: 10px;
+
+      padding: 10px 12px;
       border-radius: 999px;
+
       background: rgba(0,0,0,0.55);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
+
       border: 1px solid rgba(255,255,255,0.12);
       box-shadow: var(--shadow);
     }
-    #video-nav button {
+
+    #controls-dock button{
       width: 44px;
       height: 44px;
-      font-size: 18px;
-      background: rgba(0,0,0,0.35);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.40);
       border-radius: 999px;
       cursor: pointer;
+
+      color: #fff;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.40);
+
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 18px;
+      transition: transform 120ms ease;
     }
-    #video-nav button:disabled { opacity: 0.35; cursor: not-allowed; }
 
-    /* --- Mini‑map (déplacée bas droite, au-dessus du sheet peek) --- */
-    #mini-map-wrapper {
+    #controls-dock button:active{
+      transform: scale(0.94);
+    }
+
+    #controls-dock button:disabled{
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    /* --- Barre volume verticale (côté droit, pro) --- */
+    #volume-rail{
       position: fixed;
       right: 14px;
-      bottom: calc(var(--sheet-peek) + 14px + var(--safe-bottom));
-      width: 96px;
-      height: 96px;
-      border-radius: 50%;
-      overflow: hidden;
-      border: 2px solid rgba(255,255,255,0.65);
-      box-shadow: 0 8px 22px rgba(0,0,0,0.75);
-      z-index: 35;
-      background: #000;
-    }
-    #mini-map { width: 100%; height: 100%; }
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 36;
 
-    /* Etiquette rue au-dessus mini-map */
-    #street-label {
-      position: fixed;
-      right: 14px;
-      bottom: calc(var(--sheet-peek) + 120px + var(--safe-bottom));
-      background: rgba(0,0,0,0.70);
-      color: #fff;
-      padding: 8px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      max-width: 70vw;
-      z-index: 34;
-      border: 1px solid rgba(255,255,255,0.10);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      width: 48px;
+      height: 220px;
+
+      border-radius: 999px;
+      background: rgba(0,0,0,0.60);
+      border: 1px solid rgba(255,255,255,0.14);
       box-shadow: var(--shadow);
+
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 0;
     }
 
-    /* --- ARButton (Start AR) : style pro + position fixe au centre bas --- */
+    /* Slider vertical : writing-mode + direction pour inverser */
+    #volume-slider{
+      -webkit-appearance: slider-vertical;
+      appearance: slider-vertical;
+      writing-mode: vertical-lr;
+      direction: rtl; /* 0 en bas -> 1 en haut */
+
+      height: 180px;
+      width: 18px;
+
+      background: transparent;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    /* Améliore l'apparence sur Webkit/Chrome */
+    #volume-slider::-webkit-slider-runnable-track{
+      background: rgba(255,255,255,0.18);
+      border-radius: 999px;
+      width: 6px;
+    }
+
+    #volume-slider::-webkit-slider-thumb{
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.45);
+    }
+
+    /* Firefox */
+    #volume-slider::-moz-range-track{
+      background: rgba(255,255,255,0.18);
+      border-radius: 999px;
+      width: 6px;
+    }
+
+    #volume-slider::-moz-range-thumb{
+      width: 18px;
+      height: 18px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.45);
+    }
+
+    /* --- ARButton (Start AR) --- */
     #ARButton {
       position: fixed !important;
       left: 50% !important;
       transform: translateX(-50%) !important;
 
-      /* posé juste au-dessus du peek du bottom sheet */
       bottom: calc(var(--sheet-peek) + 14px + var(--safe-bottom)) !important;
 
       z-index: 38 !important;
       border: 0 !important;
-      padding: 14px 16px !important;
+      padding: 14px 18px !important;
       border-radius: 999px !important;
 
       color: #041018 !important;
       font-weight: 800 !important;
-      letter-spacing: 0.2px !important;
+      letter-spacing: 0.3px !important;
 
       background: linear-gradient(135deg, var(--accent), var(--accent2)) !important;
       box-shadow: 0 14px 34px rgba(0,0,0,0.55) !important;
       min-width: 160px !important;
+      font-size: 15px !important;
     }
-    #ARButton:active { transform: translateX(-50%) translateY(1px) !important; }
+    #ARButton:active { 
+      transform: translateX(-50%) translateY(1px) !important; 
+    }
 
-    /* --- Bottom sheet (Vidéos à proximité) --- */
+    /* --- Bottom sheet --- */
     .scrim{
       position: fixed;
       inset: 0;
@@ -320,7 +378,7 @@
       text-overflow: ellipsis;
     }
 
-    /* Petit hint son */
+    /* Hint son (optionnel) */
     #audio-hint{
       position: fixed;
       left: 50%;
@@ -339,121 +397,13 @@
       display: none;
     }
   </style>
-
-  <!-- Google Maps JavaScript API + géoloc mini-map -->
-  <script>
-    let miniMap = null;
-    let miniUserMarker = null;
-    let miniVideoMarkers = [];
-    let geocoder = null;
-    let lastStreetText = '';
-
-    function initMiniMap() {
-      const el = document.getElementById('mini-map');
-      if (!el || !window.google || !google.maps) return;
-
-      miniMap = new google.maps.Map(el, {
-        center: { lat: 48.8566, lng: 2.3522 },
-        zoom: 16,
-        disableDefaultUI: true
-      });
-
-      geocoder = new google.maps.Geocoder();
-    }
-    window.initMiniMap = initMiniMap;
-
-    function updateMiniMapUserPosition(lat, lng) {
-      if (!miniMap || !window.google || !google.maps) return;
-      const pos = { lat, lng };
-
-      if (!miniUserMarker) {
-        miniUserMarker = new google.maps.Marker({
-          position: pos,
-          map: miniMap,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 6,
-            fillColor: '#00aaff',
-            fillOpacity: 1,
-            strokeWeight: 0
-          }
-        });
-      } else {
-        miniUserMarker.setPosition(pos);
-      }
-      miniMap.setCenter(pos);
-    }
-
-    function updateStreetName(lat, lng) {
-      if (!window.google || !google.maps || !geocoder || !geocoder.geocode) return;
-
-      geocoder.geocode(
-        { location: { lat, lng } },
-        (results, status) => {
-          if (status !== 'OK' || !results || !results[0]) return;
-          const address = results[0].formatted_address;
-          if (address === lastStreetText) return;
-          lastStreetText = address;
-          const lbl = document.getElementById('street-label');
-          if (lbl) lbl.textContent = address;
-        }
-      );
-    }
-
-    // Affiche des markers si tu passes [{lat,lng,title,url}] plus tard
-    function showNearbyVideoMarkers(nearbyVideos) {
-      if (!miniMap || !window.google || !google.maps) return;
-
-      miniVideoMarkers.forEach(m => m.setMap(null));
-      miniVideoMarkers = [];
-
-      nearbyVideos.forEach(v => {
-        if (typeof v.lat !== 'number' || typeof v.lng !== 'number') return;
-        const marker = new google.maps.Marker({
-          position: { lat: v.lat, lng: v.lng },
-          map: miniMap,
-          title: v.title || 'Vidéo UrbainAR'
-        });
-
-        marker.addListener('click', () => {
-          if (window.loadVideo && window.playCurrentVideo && window.videos) {
-            const idx = window.videos.indexOf(v.url);
-            if (idx >= 0) {
-              window.loadVideo(idx);
-              window.playCurrentVideo();
-            }
-          }
-        });
-
-        miniVideoMarkers.push(marker);
-      });
-    }
-    window.showNearbyVideoMarkers = showNearbyVideoMarkers;
-
-    function startGeoTracking() {
-      if (!('geolocation' in navigator)) return;
-
-      navigator.geolocation.watchPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          updateMiniMapUserPosition(latitude, longitude);
-          updateStreetName(latitude, longitude);
-        },
-        (err) => { console.warn('Geo error', err); },
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
-      );
-    }
-    window.startGeoTracking = startGeoTracking;
-  </script>
-
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDGe5utx89UUDQllkr3nC5ex_wk4RT-aPo&callback=initMiniMap&loading=async" async defer></script>
 </head>
 
 <body>
   <!-- UI overlay -->
   <div id="video-info">
     <div id="video-title">Chargement…</div>
-    <div id="video-meta">Tape “Start AR”, puis touche l’écran pour placer la vidéo.</div>
+    <div id="video-meta">Tape "Start AR", puis touche l'écran pour placer la vidéo.</div>
     <div id="video-count">0 vidéo</div>
   </div>
 
@@ -461,21 +411,21 @@
     <button id="btn-close" onclick="closeAr()" title="Fermer l'AR">✕</button>
   </div>
 
-  <div id="audio-hint">Touchez “🔊” puis relancez la vidéo pour activer le son.</div>
+  <div id="audio-hint">Glisse la barre de volume ou tape 🔊.</div>
 
-  <div id="video-nav">
+  <!-- Dock contrôles (bas gauche) -->
+  <div id="controls-dock" aria-label="Contrôles">
     <button id="btn-prev" onclick="prevVideo()" title="Vidéo précédente" disabled>⟵</button>
-    <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF">🔊</button>
+    <button id="btn-mute" onclick="toggleMute()" title="Muet">🔊</button>
     <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante" disabled>⟶</button>
   </div>
 
-  <!-- Mini-map circulaire + label rue -->
-  <div id="mini-map-wrapper">
-    <div id="mini-map"></div>
+  <!-- Barre volume verticale (côté droit) -->
+  <div id="volume-rail" aria-label="Volume">
+    <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1" aria-label="Contrôle du volume" />
   </div>
-  <div id="street-label"></div>
 
-  <!-- Bottom sheet Vidéos à proximité -->
+  <!-- Bottom sheet -->
   <div class="scrim" id="scrim"></div>
   <section class="sheet" id="sheet">
     <div class="sheetHeader" id="sheetHeader">
@@ -539,7 +489,6 @@
 
     let videoElement = null;
     let videoTexture = null;
-    let soundEnabled = true;
 
     let frameVideoElement = null;
     let frameVideoTexture = null;
@@ -559,7 +508,6 @@
     let socialCanvas = null;
     let socialCtx = null;
 
-    // Expose videos / loadVideo / playCurrentVideo
     window.videos = [];
     let currentIndex = 0;
 
@@ -567,6 +515,8 @@
     let dates = [];
     let likesList = [];
     let viewsList = [];
+
+    let volumeSlider = null;
 
     // --- Bottom sheet logic ---
     const sheet = document.getElementById('sheet');
@@ -579,14 +529,17 @@
       scrim.classList.toggle('on', expanded);
       btnSheetToggle.textContent = expanded ? '✕' : '⌄';
     }
+
     sheetHeader.addEventListener('click', (e) => {
       if (e.target === btnSheetToggle) return;
       setExpanded(!sheet.classList.contains('expanded'));
     });
+
     btnSheetToggle.addEventListener('click', (e) => {
       e.stopPropagation();
       setExpanded(!sheet.classList.contains('expanded'));
     });
+
     scrim.addEventListener('click', () => setExpanded(false));
 
     let startY = 0;
@@ -610,7 +563,7 @@
         const subtitle = document.getElementById('sheetSubtitle');
 
         if (tab === 'help') {
-          subtitle.textContent = "Astuce: active le son via 🔊 (geste utilisateur requis).";
+          subtitle.textContent = "Glisse la barre de volume (côté droit) pour ajuster le son.";
           setExpanded(true);
         } else {
           subtitle.textContent = "Sélectionnez une vidéo, puis Start AR.";
@@ -651,22 +604,70 @@
       });
     }
 
-    // --- Audio unlock helper (important pour le son) ---
+    // --- Volume UI ---
+    function bindVolumeUI(){
+      volumeSlider = document.getElementById('volume-slider');
+      if (!volumeSlider) return;
+
+      volumeSlider.value = 1;
+
+      volumeSlider.addEventListener('input', async () => {
+        const v = parseFloat(volumeSlider.value || '1');
+        if (videoElement) {
+          videoElement.volume = v;
+          videoElement.muted = (v <= 0.001);
+        }
+
+        const btn = document.getElementById('btn-mute');
+        if (btn) btn.textContent = (v <= 0.001) ? '🔇' : '🔊';
+
+        // Relance play si nécessaire (geste utilisateur)
+        try { 
+          if (videoElement && videoElement.paused) await videoElement.play(); 
+        } catch (_) {}
+      });
+    }
+
+    window.toggleMute = async function () {
+      if (!videoElement) return;
+
+      const current = parseFloat(volumeSlider?.value || '1');
+      if (current > 0.001) {
+        if (volumeSlider) volumeSlider.value = 0;
+        videoElement.volume = 0;
+        videoElement.muted = true;
+      } else {
+        if (volumeSlider) volumeSlider.value = 1;
+        videoElement.volume = 1;
+        videoElement.muted = false;
+      }
+
+      const btn = document.getElementById('btn-mute');
+      if (btn) btn.textContent = (videoElement.muted || videoElement.volume <= 0.001) ? '🔇' : '🔊';
+
+      try { 
+        if (videoElement && videoElement.paused) await videoElement.play(); 
+      } catch (_) {}
+    };
+
+    // --- Audio unlock helper ---
     function showAudioHint(show){
       const el = document.getElementById('audio-hint');
       if (!el) return;
       el.style.display = show ? 'block' : 'none';
     }
 
-    async function tryPlayWithCurrentSoundSetting() {
+    async function tryPlayWithCurrentVolume() {
       if (!videoElement) return;
-      videoElement.muted = !soundEnabled;
+
+      const vol = parseFloat(volumeSlider?.value || '1');
+      videoElement.volume = vol;
+      videoElement.muted = (vol <= 0.001);
 
       try {
         await videoElement.play();
         showAudioHint(false);
       } catch (e) {
-        // Autoplay/son bloqué -> on affiche hint
         showAudioHint(true);
       }
     }
@@ -721,6 +722,7 @@
       setupVideoElement();
       setupFrameVideoElement();
       setupInfoCanvas();
+      bindVolumeUI();
 
       populateSheetFromVideos();
 
@@ -732,8 +734,6 @@
         document.getElementById('video-meta').textContent = "Reviens depuis la carte UrbainAR (ou passe ?videos=...).";
         document.getElementById('video-count').textContent = "0 vidéo";
       }
-
-      if (window.startGeoTracking) window.startGeoTracking();
     }
 
     function onWindowResize() {
@@ -1058,7 +1058,11 @@
 
       const url = window.videos[index];
       videoElement.src = url;
-      videoElement.muted = !soundEnabled;
+
+      const vol = parseFloat(volumeSlider?.value || '1');
+      videoElement.volume = vol;
+      videoElement.muted = (vol <= 0.001);
+
       videoElement.load();
 
       document.getElementById('video-title').textContent = 'Vidéo UrbainAR';
@@ -1093,8 +1097,7 @@
     function playCurrentVideo() {
       if (!videoElement) return;
 
-      // Essaye de jouer avec le réglage de son actuel (si bloqué, on affichera le hint)
-      tryPlayWithCurrentSoundSetting();
+      tryPlayWithCurrentVolume();
 
       if (frameVideoElement && frameVideoElement.paused) {
         frameVideoElement.play().catch(() => {});
@@ -1116,24 +1119,14 @@
       }
     };
 
-    window.toggleSound = function () {
-      soundEnabled = !soundEnabled;
-      const btn = document.getElementById('btn-sound');
-      btn.textContent = soundEnabled ? '🔊' : '🔇';
-      btn.title = soundEnabled ? 'Son ON' : 'Son OFF';
-
-      // IMPORTANT: on relance play() sur un vrai geste utilisateur (clic bouton)
-      tryPlayWithCurrentSoundSetting();
-    };
-
     window.closeAr = function () {
       if (history.length > 1) history.back();
       else window.close();
     };
 
-    // Premier geste utilisateur: tentative d'unlock audio (utile si autoplay bloqué)
+    // Premier geste utilisateur
     window.addEventListener('pointerup', () => {
-      tryPlayWithCurrentSoundSetting();
+      tryPlayWithCurrentVolume();
     }, { once: true });
 
     // ---- RENDER ----
