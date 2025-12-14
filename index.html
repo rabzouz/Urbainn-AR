@@ -1,24 +1,29 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
   <title>UrbainAR - WebXR AR</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 
   <style>
     :root{
-      --bg: #000;
-      --text: #fff;
-      --muted: rgba(255,255,255,.78);
-      --glass: rgba(0,0,0,.6);
-      --stroke: rgba(255,255,255,.22);
-      --accent: #6ee7ff;
-      --accent-2:#60a5fa;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-top: env(safe-area-inset-top, 0px);
+
+      --glass: rgba(0,0,0,0.62);
+      --stroke: rgba(255,255,255,0.18);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.72);
+
+      --accent: #6ee7ff;
+      --accent2: #60a5fa;
+
+      --shadow: 0 12px 34px rgba(0,0,0,0.55);
+      --radius-xl: 22px;
       --radius-lg: 16px;
-      --radius-xl: 24px;
-      --shadow: 0 10px 30px rgba(0,0,0,.5);
+
+      /* bottom sheet peek height */
+      --sheet-peek: 92px;
     }
 
     html, body { height: 100%; }
@@ -26,166 +31,317 @@
       margin: 0;
       overflow: hidden;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      background: #000;
+      color: #fff;
       -webkit-tap-highlight-color: transparent;
     }
-
     canvas { display: block; }
 
-    /* Top bar infos vidéo sélectionnée */
+    /* --- Top bar infos vidéo sélectionnée --- */
     #video-info {
       position: fixed;
       top: calc(12px + var(--safe-top));
       left: 12px;
       right: 68px;
       background: var(--glass);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       color: #fff;
       padding: 10px 12px;
       border-radius: 12px;
-      z-index: 10;
+      z-index: 30;
       font-size: 13px;
       display: flex;
       flex-direction: column;
       gap: 2px;
       pointer-events: none;
-      border: 1px solid rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,0.10);
       box-shadow: var(--shadow);
     }
     #video-title { font-size: 15px; font-weight: 700; line-height: 1.2; }
-    #video-meta, #video-count { font-size: 12px; opacity: 0.9; }
+    #video-meta { font-size: 12px; opacity: 0.85; }
+    #video-count { font-size: 12px; opacity: 0.9; }
 
-    /* Bouton Fermer */
-    #top-right { position: fixed; top: calc(10px + var(--safe-top)); right: 10px; z-index: 12; }
+    /* --- Bouton Fermer --- */
+    #top-right {
+      position: fixed;
+      top: calc(10px + var(--safe-top));
+      right: 10px;
+      z-index: 40;
+    }
     #btn-close {
-      width: 42px; height: 42px;
+      width: 42px;
+      height: 42px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,0.35);
       background: radial-gradient(circle at top, rgba(0,0,0,0.92), rgba(0,0,0,0.65));
-      color: #fff; font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.6);
     }
     #btn-close:active { transform: scale(0.98); }
 
-    /* Contrôles bas : prev / sound / next */
+    /* --- Contrôles (déplacés en bas à gauche pour ne pas gêner le bouton AR) --- */
     #video-nav {
       position: fixed;
-      bottom: calc(20px + var(--safe-bottom));
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-      display: flex; gap: 18px; align-items: center;
+      left: 14px;
+      bottom: calc(var(--sheet-peek) + 14px + var(--safe-bottom));
+      z-index: 35;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: var(--shadow);
     }
     #video-nav button {
-      width: 56px; height: 56px; font-size: 22px;
-      background: rgba(0,0,0,0.72); color: #fff;
-      border: 2px solid rgba(255,255,255,0.85);
-      border-radius: 50%; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: var(--shadow);
+      width: 44px;
+      height: 44px;
+      font-size: 18px;
+      background: rgba(0,0,0,0.35);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.40);
+      border-radius: 999px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     #video-nav button:disabled { opacity: 0.35; cursor: not-allowed; }
 
-    /* Mini‑map circulaire + label rue */
+    /* --- Mini‑map (déplacée bas droite, au-dessus du sheet peek) --- */
     #mini-map-wrapper {
       position: fixed;
-      bottom: calc(190px + var(--safe-bottom)); /* au-dessus du bouton ARButton three.js */
-      left: 50%; transform: translateX(-50%);
-      width: 92px; height: 92px; border-radius: 50%; overflow: hidden;
-      border: 2px solid rgba(255,255,255,0.7);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.65);
-      z-index: 11; background: #000;
+      right: 14px;
+      bottom: calc(var(--sheet-peek) + 14px + var(--safe-bottom));
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.65);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.75);
+      z-index: 35;
+      background: #000;
     }
     #mini-map { width: 100%; height: 100%; }
 
+    /* Etiquette rue au-dessus mini-map */
     #street-label {
       position: fixed;
-      bottom: calc(310px + var(--safe-bottom));
-      right: 18px;
-      background: rgba(0,0,0,0.75);
-      color: #fff; padding: 6px 10px;
-      border-radius: 10px; font-size: 12px; max-width: 60vw;
-      z-index: 6; border: 1px solid rgba(255,255,255,.12);
+      right: 14px;
+      bottom: calc(var(--sheet-peek) + 120px + var(--safe-bottom));
+      background: rgba(0,0,0,0.70);
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      max-width: 70vw;
+      z-index: 34;
+      border: 1px solid rgba(255,255,255,0.10);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       box-shadow: var(--shadow);
     }
 
-    /* Bottom sheet + scrim */
-    .scrim{
-      position: fixed; inset: 0; z-index: 14;
-      background: rgba(0,0,0,.42); opacity: 0; pointer-events: none;
-      transition: opacity 220ms ease;
+    /* --- ARButton (Start AR) : style pro + position fixe au centre bas --- */
+    #ARButton {
+      position: fixed !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+
+      /* posé juste au-dessus du peek du bottom sheet */
+      bottom: calc(var(--sheet-peek) + 14px + var(--safe-bottom)) !important;
+
+      z-index: 38 !important;
+      border: 0 !important;
+      padding: 14px 16px !important;
+      border-radius: 999px !important;
+
+      color: #041018 !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.2px !important;
+
+      background: linear-gradient(135deg, var(--accent), var(--accent2)) !important;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.55) !important;
+      min-width: 160px !important;
     }
-    .scrim.on{ opacity: 1; pointer-events: auto; }
+    #ARButton:active { transform: translateX(-50%) translateY(1px) !important; }
+
+    /* --- Bottom sheet (Vidéos à proximité) --- */
+    .scrim{
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      background: rgba(0,0,0,.42);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 200ms ease;
+    }
+    .scrim.on{
+      opacity: 1;
+      pointer-events: auto;
+    }
 
     .sheet{
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
-      height: min(76vh, 620px);
-      transform: translateY(calc(100% - 96px)); /* peek */
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      height: min(74vh, 640px);
+
+      transform: translateY(calc(100% - var(--sheet-peek)));
       transition: transform 220ms ease;
+
       border-top-left-radius: var(--radius-xl);
       border-top-right-radius: var(--radius-xl);
       background: rgba(12, 16, 22, 0.94);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-top: 1px solid rgba(255,255,255,.12);
-      box-shadow: 0 -18px 44px rgba(0,0,0,.5);
+      border-top: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 -18px 46px rgba(0,0,0,0.55);
       overflow: hidden;
       touch-action: none;
     }
     .sheet.expanded{ transform: translateY(0); }
 
-    .sheetHeader{ padding: 10px 16px 12px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .sheetHeader{
+      padding: 10px 16px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
     .grabber{
-      width: 46px; height: 5px; border-radius: 999px;
-      background: rgba(255,255,255,.22); margin: 6px auto 10px;
+      width: 46px;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.22);
+      margin: 6px auto 10px;
     }
-    .sheetTopRow{ display:flex; align-items:center; justify-content: space-between; gap: 12px; }
-    .title{ display:flex; flex-direction: column; gap: 2px; min-width: 0; }
-    .title h3{ margin:0; font-size: 15px; font-weight: 800; letter-spacing: .2px; }
-    .title p{ margin:0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sheetTopRow{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .sheetTitle{ min-width: 0; }
+    .sheetTitle b{ display:block; font-size: 15px; font-weight: 900; }
+    .sheetTitle span{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 3px;
+    }
+    .sheetBtn{
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
 
-    .chipRow{ display:flex; gap:10px; padding: 12px 16px; overflow-x:auto; -webkit-overflow-scrolling: touch; }
-    .chip{
-      white-space: nowrap; padding: 10px 12px; border-radius: 999px;
-      border: 1px solid var(--stroke); background: rgba(255,255,255,.06);
-      color: var(--text); font-size: 13px; cursor:pointer; user-select:none;
+    .chipRow{
+      display: flex;
+      gap: 10px;
+      padding: 12px 16px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
-    .chip.active{ border-color: rgba(110,231,255,.55); background: rgba(110,231,255,.14); }
+    .chip{
+      white-space: nowrap;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .chip.active{
+      border-color: rgba(110,231,255,0.55);
+      background: rgba(110,231,255,0.14);
+    }
 
     .sheetContent{
-      height: calc(100% - 132px);
-      overflow: auto; padding: 8px 16px calc(24px + var(--safe-bottom));
+      height: calc(100% - 134px);
+      overflow: auto;
+      padding: 10px 16px calc(18px + var(--safe-bottom));
     }
+
+    .emptyState{
+      padding: 12px;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.18);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
     .listItem{
-      display:flex; gap: 12px; align-items:center;
-      padding: 12px; border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.06);
-      background: rgba(0,0,0,.14); cursor:pointer; margin-bottom: 10px;
+      display:flex;
+      gap: 12px;
+      align-items:center;
+      padding: 12px;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.16);
+      cursor:pointer;
+      margin-bottom: 10px;
     }
     .thumb{
-      width: 54px; height: 40px; border-radius: 12px;
-      background: linear-gradient(135deg, rgba(110,231,255,.28), rgba(96,165,250,.18));
-      border: 1px solid rgba(255,255,255,.08);
+      width: 56px; height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(110,231,255,.26), rgba(96,165,250,.16));
+      border: 1px solid rgba(255,255,255,0.10);
       flex: 0 0 auto;
     }
     .meta{ min-width:0; }
-    .meta b{ display:block; font-size: 13px; margin-bottom: 2px; }
-    .meta span{ display:block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meta b{ display:block; font-size: 13px; }
+    .meta span{
+      display:block;
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-    /* ARButton (three.js) sera positionné au-dessus du sheet peek */
-    .ar-fab-offset { bottom: calc(110px + var(--safe-bottom)) !important; }
-
-    @media (max-width: 380px){
-      #video-info{ right: 60px; }
+    /* Petit hint son */
+    #audio-hint{
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(var(--sheet-peek) + 78px + var(--safe-bottom));
+      z-index: 36;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      color: var(--muted);
+      display: none;
     }
   </style>
 
   <!-- Google Maps JavaScript API + géoloc mini-map -->
   <script>
-    // Variables globales Maps + géoloc
     let miniMap = null;
     let miniUserMarker = null;
     let miniVideoMarkers = [];
@@ -201,6 +357,7 @@
         zoom: 16,
         disableDefaultUI: true
       });
+
       geocoder = new google.maps.Geocoder();
     }
     window.initMiniMap = initMiniMap;
@@ -208,10 +365,18 @@
     function updateMiniMapUserPosition(lat, lng) {
       if (!miniMap || !window.google || !google.maps) return;
       const pos = { lat, lng };
+
       if (!miniUserMarker) {
         miniUserMarker = new google.maps.Marker({
-          position: pos, map: miniMap,
-          icon: { path: google.maps.SymbolPath.CIRCLE, scale: 6, fillColor: '#00aaff', fillOpacity: 1, strokeWeight: 0 }
+          position: pos,
+          map: miniMap,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 6,
+            fillColor: '#00aaff',
+            fillOpacity: 1,
+            strokeWeight: 0
+          }
         });
       } else {
         miniUserMarker.setPosition(pos);
@@ -221,36 +386,53 @@
 
     function updateStreetName(lat, lng) {
       if (!window.google || !google.maps || !geocoder || !geocoder.geocode) return;
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        if (status !== 'OK' || !results || !results[0]) return;
-        const address = results[0].formatted_address;
-        if (address === lastStreetText) return;
-        lastStreetText = address;
-        const lbl = document.getElementById('street-label');
-        if (lbl) lbl.textContent = address;
-      });
+
+      geocoder.geocode(
+        { location: { lat, lng } },
+        (results, status) => {
+          if (status !== 'OK' || !results || !results[0]) return;
+          const address = results[0].formatted_address;
+          if (address === lastStreetText) return;
+          lastStreetText = address;
+          const lbl = document.getElementById('street-label');
+          if (lbl) lbl.textContent = address;
+        }
+      );
     }
 
+    // Affiche des markers si tu passes [{lat,lng,title,url}] plus tard
     function showNearbyVideoMarkers(nearbyVideos) {
       if (!miniMap || !window.google || !google.maps) return;
+
       miniVideoMarkers.forEach(m => m.setMap(null));
       miniVideoMarkers = [];
+
       nearbyVideos.forEach(v => {
+        if (typeof v.lat !== 'number' || typeof v.lng !== 'number') return;
         const marker = new google.maps.Marker({
-          position: { lat: v.lat, lng: v.lng }, map: miniMap, title: v.title || 'Vidéo UrbainAR'
+          position: { lat: v.lat, lng: v.lng },
+          map: miniMap,
+          title: v.title || 'Vidéo UrbainAR'
         });
+
         marker.addListener('click', () => {
-          if (window.loadVideo && window.playCurrentVideo) {
-            const idx = window.videos ? window.videos.indexOf(v.url) : -1;
-            if (idx >= 0) { window.loadVideo(idx); window.playCurrentVideo(); }
+          if (window.loadVideo && window.playCurrentVideo && window.videos) {
+            const idx = window.videos.indexOf(v.url);
+            if (idx >= 0) {
+              window.loadVideo(idx);
+              window.playCurrentVideo();
+            }
           }
         });
+
         miniVideoMarkers.push(marker);
       });
     }
+    window.showNearbyVideoMarkers = showNearbyVideoMarkers;
 
     function startGeoTracking() {
       if (!('geolocation' in navigator)) return;
+
       navigator.geolocation.watchPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
@@ -263,75 +445,88 @@
     }
     window.startGeoTracking = startGeoTracking;
   </script>
+
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDGe5utx89UUDQllkr3nC5ex_wk4RT-aPo&callback=initMiniMap&loading=async" async defer></script>
 </head>
-<body>
 
+<body>
   <!-- UI overlay -->
-  <div id="video-info" aria-live="polite">
-    <div id="video-title">Chargement de la vidéo...</div>
-    <div id="video-meta">WebXR AR : tape pour placer l'écran vidéo sur le sol.</div>
+  <div id="video-info">
+    <div id="video-title">Chargement…</div>
+    <div id="video-meta">Tape “Start AR”, puis touche l’écran pour placer la vidéo.</div>
     <div id="video-count">0 vidéo</div>
   </div>
 
   <div id="top-right">
-    <button id="btn-close" onclick="closeAr()" title="Fermer l'AR" aria-label="Fermer">✕</button>
+    <button id="btn-close" onclick="closeAr()" title="Fermer l'AR">✕</button>
   </div>
 
-  <div id="video-nav" aria-label="Navigation vidéos">
-    <button id="btn-prev" onclick="prevVideo()" title="Vidéo précédente" disabled aria-label="Précédente">⬅️</button>
-    <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF" aria-label="Son">🔊</button>
-    <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante" disabled aria-label="Suivante">➡️</button>
+  <div id="audio-hint">Touchez “🔊” puis relancez la vidéo pour activer le son.</div>
+
+  <div id="video-nav">
+    <button id="btn-prev" onclick="prevVideo()" title="Vidéo précédente" disabled>⟵</button>
+    <button id="btn-sound" onclick="toggleSound()" title="Son ON/OFF">🔊</button>
+    <button id="btn-next" onclick="nextVideo()" title="Vidéo suivante" disabled>⟶</button>
   </div>
 
   <!-- Mini-map circulaire + label rue -->
-  <div id="mini-map-wrapper" aria-hidden="true">
+  <div id="mini-map-wrapper">
     <div id="mini-map"></div>
   </div>
-  <div id="street-label" aria-live="polite"></div>
+  <div id="street-label"></div>
 
-  <!-- Vidéos HTML5 pour la texture -->
-  <video id="video" src="" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" style="display:none"></video>
-  <video id="frameVideo" src="" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous" style="display:none"></video>
-
-  <!-- Bottom sheet moderne -->
+  <!-- Bottom sheet Vidéos à proximité -->
   <div class="scrim" id="scrim"></div>
-  <section class="sheet" id="sheet" aria-label="Vidéos proches">
+  <section class="sheet" id="sheet">
     <div class="sheetHeader" id="sheetHeader">
       <div class="grabber"></div>
       <div class="sheetTopRow">
-        <div class="title">
-          <h3>Vidéos à proximité</h3>
-          <p id="subtitle">Prévisualise puis place en AR.</p>
+        <div class="sheetTitle">
+          <b>Vidéos à proximité</b>
+          <span id="sheetSubtitle">Sélectionnez une vidéo, puis Start AR.</span>
         </div>
-        <button id="btnSheetToggle" class="chip" style="padding:8px 10px">⌄</button>
+        <button class="sheetBtn" id="btnSheetToggle">⌄</button>
       </div>
     </div>
 
     <div class="chipRow">
       <div class="chip active" data-tab="near">Proches</div>
-      <div class="chip" data-tab="popular">Populaires</div>
-      <div class="chip" data-tab="saved">Enregistrées</div>
+      <div class="chip" data-tab="all">Toutes</div>
+      <div class="chip" data-tab="help">Aide</div>
     </div>
 
     <div class="sheetContent" id="sheetContent">
-      <!-- Exemple de contenu (remplace par tes données) -->
-      <div class="listItem" data-video="vid_1">
-        <div class="thumb"></div>
-        <div class="meta">
-          <b>Street AR – 120 m</b>
-          <span>12 vues • 3 likes • Sol contrasté conseillé</span>
-        </div>
+      <div class="emptyState" id="emptyState">
+        Aucune vidéo fournie à cette page.<br><br>
+        Ouvre avec : <b>?videos=url1,url2</b> (et optionnellement usernames, dates, likes, views).
       </div>
-      <div class="listItem" data-video="vid_2">
-        <div class="thumb"></div>
-        <div class="meta">
-          <b>Mur Urbain – 310 m</b>
-          <span>28 vues • 9 likes • Bon éclairage</span>
-        </div>
-      </div>
+      <div id="videoList"></div>
     </div>
   </section>
+
+  <!-- Vidéos HTML5 pour la texture -->
+  <video
+    id="video"
+    src=""
+    preload="auto"
+    loop
+    playsinline
+    webkit-playsinline
+    crossorigin="anonymous"
+    style="display:none">
+  </video>
+
+  <video
+    id="frameVideo"
+    src=""
+    preload="auto"
+    loop
+    playsinline
+    webkit-playsinline
+    muted
+    crossorigin="anonymous"
+    style="display:none">
+  </video>
 
   <script type="module">
     import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
@@ -364,25 +559,26 @@
     let socialCanvas = null;
     let socialCtx = null;
 
-    // Données vidéos
+    // Expose videos / loadVideo / playCurrentVideo
     window.videos = [];
     let currentIndex = 0;
+
     let usernames = [];
     let dates = [];
     let likesList = [];
     let viewsList = [];
 
-    // Sheet UI
+    // --- Bottom sheet logic ---
     const sheet = document.getElementById('sheet');
     const scrim = document.getElementById('scrim');
     const sheetHeader = document.getElementById('sheetHeader');
     const btnSheetToggle = document.getElementById('btnSheetToggle');
 
-    const setExpanded = (expanded) => {
+    function setExpanded(expanded){
       sheet.classList.toggle('expanded', expanded);
       scrim.classList.toggle('on', expanded);
       btnSheetToggle.textContent = expanded ? '✕' : '⌄';
-    };
+    }
     sheetHeader.addEventListener('click', (e) => {
       if (e.target === btnSheetToggle) return;
       setExpanded(!sheet.classList.contains('expanded'));
@@ -392,7 +588,7 @@
       setExpanded(!sheet.classList.contains('expanded'));
     });
     scrim.addEventListener('click', () => setExpanded(false));
-    // Swipe
+
     let startY = 0;
     sheet.addEventListener('pointerdown', (e) => {
       startY = e.clientY;
@@ -404,10 +600,86 @@
       if (dy > 30) setExpanded(false);
     });
 
+    // Chips
+    document.querySelectorAll('.chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+
+        const tab = chip.dataset.tab;
+        const subtitle = document.getElementById('sheetSubtitle');
+
+        if (tab === 'help') {
+          subtitle.textContent = "Astuce: active le son via 🔊 (geste utilisateur requis).";
+          setExpanded(true);
+        } else {
+          subtitle.textContent = "Sélectionnez une vidéo, puis Start AR.";
+        }
+      });
+    });
+
+    function populateSheetFromVideos(){
+      const list = document.getElementById('videoList');
+      const empty = document.getElementById('emptyState');
+      list.innerHTML = '';
+
+      if (!window.videos || window.videos.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      window.videos.forEach((url, idx) => {
+        const title = usernames[idx] ? `@${usernames[idx]}` : 'Vidéo UrbainAR';
+        const meta = `${likesList[idx] ?? 0} likes • ${viewsList[idx] ?? 0} vues • ${dates[idx] ?? ''}`.trim();
+
+        const item = document.createElement('div');
+        item.className = 'listItem';
+        item.innerHTML = `
+          <div class="thumb"></div>
+          <div class="meta">
+            <b>${title}</b>
+            <span>${meta}</span>
+          </div>
+        `;
+        item.addEventListener('click', () => {
+          window.loadVideo(idx);
+          window.playCurrentVideo();
+          setExpanded(false);
+        });
+        list.appendChild(item);
+      });
+    }
+
+    // --- Audio unlock helper (important pour le son) ---
+    function showAudioHint(show){
+      const el = document.getElementById('audio-hint');
+      if (!el) return;
+      el.style.display = show ? 'block' : 'none';
+    }
+
+    async function tryPlayWithCurrentSoundSetting() {
+      if (!videoElement) return;
+      videoElement.muted = !soundEnabled;
+
+      try {
+        await videoElement.play();
+        showAudioHint(false);
+      } catch (e) {
+        // Autoplay/son bloqué -> on affiche hint
+        showAudioHint(true);
+      }
+    }
+
     function init() {
       scene = new THREE.Scene();
 
-      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+      camera = new THREE.PerspectiveCamera(
+        70,
+        window.innerWidth / window.innerHeight,
+        0.01,
+        20
+      );
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setPixelRatio(window.devicePixelRatio);
@@ -425,18 +697,7 @@
       reticle.visible = false;
       scene.add(reticle);
 
-      // ARButton avec domOverlay pour une UI DOM fiable au-dessus de la scène (si supporté)
-      const arButton = ARButton.createButton(renderer, {
-        requiredFeatures: ['hit-test'],
-        optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld-ar'],
-        domOverlay: { root: document.body }
-      });
-      arButton.style.position = 'fixed';
-      arButton.style.left = '50%';
-      arButton.style.transform = 'translateX(-50%)';
-      arButton.style.bottom = '110px';
-      arButton.style.zIndex = '13';
-      arButton.classList.add('ar-fab-offset');
+      const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] });
       document.body.appendChild(arButton);
 
       renderer.xr.addEventListener('sessionstart', async () => {
@@ -461,28 +722,18 @@
       setupFrameVideoElement();
       setupInfoCanvas();
 
+      populateSheetFromVideos();
+
       if (window.videos.length > 0) {
         loadVideo(0);
         playCurrentVideo();
+      } else {
+        document.getElementById('video-title').textContent = 'Aucune vidéo';
+        document.getElementById('video-meta').textContent = "Reviens depuis la carte UrbainAR (ou passe ?videos=...).";
+        document.getElementById('video-count').textContent = "0 vidéo";
       }
 
       if (window.startGeoTracking) window.startGeoTracking();
-
-      // Liste item -> sélection vidéo
-      document.querySelectorAll('.listItem').forEach((el) => {
-        el.addEventListener('click', () => {
-          document.getElementById('subtitle').textContent =
-            el.querySelector('b').textContent + ' • Appuie sur AR puis place au sol.';
-          setExpanded(false);
-        });
-      });
-      // Chips
-      document.querySelectorAll('.chip').forEach((chip) => {
-        chip.addEventListener('click', () => {
-          document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-          chip.classList.add('active');
-        });
-      });
     }
 
     function onWindowResize() {
@@ -493,18 +744,31 @@
 
     function createBoardIfNeeded() {
       if (boardGroup) return;
+
       boardGroup = new THREE.Group();
 
       const frameGeo = new THREE.PlaneGeometry(1.4, 2.2);
-      const frameMat = new THREE.MeshBasicMaterial({ map: frameVideoTexture, side: THREE.DoubleSide });
+      const frameMat = new THREE.MeshBasicMaterial({
+        map: frameVideoTexture,
+        side: THREE.DoubleSide
+      });
       framePlane = new THREE.Mesh(frameGeo, frameMat);
+      framePlane.position.set(0, 0, 0);
       boardGroup.add(framePlane);
 
-      const frameColorOuter = 0x00f5ff, frameColorInner = 0x00ff80, frameDepth = 0.04, frameThickness = 0.045;
-      const frameWidth = 1.0, frameHeight = 1.85;
+      const frameColorOuter = 0x00f5ff;
+      const frameColorInner = 0x00ff80;
+      const frameDepth = 0.04;
+      const frameThickness = 0.045;
+      const frameWidth = 1.0;
+      const frameHeight = 1.85;
 
       const frameMatNeon = new THREE.MeshStandardMaterial({
-        color: frameColorOuter, emissive: frameColorOuter, emissiveIntensity: 1.5, metalness: 0.2, roughness: 0.3
+        color: frameColorOuter,
+        emissive: frameColorOuter,
+        emissiveIntensity: 1.5,
+        metalness: 0.2,
+        roughness: 0.3
       });
       frameMatGlobal = frameMatNeon;
 
@@ -512,54 +776,84 @@
       neonLight.position.set(0, 0.5, 0.4);
       boardGroup.add(neonLight);
 
-      const topBar = new THREE.Mesh(new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth), frameMatNeon);
+      const topBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
+      const topBar = new THREE.Mesh(topBarGeo, frameMatNeon);
       topBar.position.set(0, frameHeight / 2, frameDepth / 2);
-      const bottomBar = new THREE.Mesh(new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth), frameMatNeon);
+      boardGroup.add(topBar);
+
+      const bottomBarGeo = new THREE.BoxGeometry(frameWidth, frameThickness, frameDepth);
+      const bottomBar = new THREE.Mesh(bottomBarGeo, frameMatNeon);
       bottomBar.position.set(0, -frameHeight / 2, frameDepth / 2);
-      const leftBar = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth), frameMatNeon);
+      boardGroup.add(bottomBar);
+
+      const leftBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
+      const leftBar = new THREE.Mesh(leftBarGeo, frameMatNeon);
       leftBar.position.set(-frameWidth / 2, 0, frameDepth / 2);
-      const rightBar = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth), frameMatNeon);
+      boardGroup.add(leftBar);
+
+      const rightBarGeo = new THREE.BoxGeometry(frameThickness, frameHeight, frameDepth);
+      const rightBar = new THREE.Mesh(rightBarGeo, frameMatNeon);
       rightBar.position.set(frameWidth / 2, 0, frameDepth / 2);
-      boardGroup.add(topBar, bottomBar, leftBar, rightBar);
+      boardGroup.add(rightBar);
 
       const groundGeo = new THREE.CircleGeometry(1.2, 48);
-      const groundMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 });
+      const groundMat = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.35
+      });
       groundPlane = new THREE.Mesh(groundGeo, groundMat);
       groundPlane.rotation.x = -Math.PI / 2;
       groundPlane.position.set(0, -frameHeight / 2 - 0.05, 0);
       boardGroup.add(groundPlane);
 
       const videoGeo = new THREE.PlaneGeometry(0.9, 1.6);
-      const videoMat = new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide });
+      const videoMat = new THREE.MeshBasicMaterial({
+        map: videoTexture,
+        side: THREE.DoubleSide
+      });
       videoPlane = new THREE.Mesh(videoGeo, videoMat);
       videoPlane.position.set(0, -0.1, 0.02);
       boardGroup.add(videoPlane);
 
-      infoCanvas = document.createElement('canvas');
-      infoCanvas.width = 512; infoCanvas.height = 256;
-      infoCtx = infoCanvas.getContext('2d');
-      drawInfoText(0);
+      const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
       infoTexture = new THREE.CanvasTexture(infoCanvas);
-      const infoMat = new THREE.MeshBasicMaterial({ map: infoTexture, transparent: true, side: THREE.DoubleSide });
-      infoPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.4), infoMat);
+      const infoMat = new THREE.MeshBasicMaterial({
+        map: infoTexture,
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+      infoPlane = new THREE.Mesh(infoGeo, infoMat);
       infoPlane.position.set(0, 1.15, 0.04);
       boardGroup.add(infoPlane);
 
-      socialCanvas = document.createElement('canvas');
-      socialCanvas.width = 256; socialCanvas.height = 512;
-      socialCtx = socialCanvas.getContext('2d');
-      drawSocialColumn(0);
+      const socialGeo = new THREE.PlaneGeometry(0.28, 0.9);
       socialTexture = new THREE.CanvasTexture(socialCanvas);
-      const socialMat = new THREE.MeshBasicMaterial({ map: socialTexture, transparent: true, side: THREE.DoubleSide });
-      socialPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.9), socialMat);
+      const socialMat = new THREE.MeshBasicMaterial({
+        map: socialTexture,
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+      socialPlane = new THREE.Mesh(socialGeo, socialMat);
       socialPlane.position.set(0.9 / 2 + 0.18, -0.1, 0.04);
       boardGroup.add(socialPlane);
 
-      const logoWidth = 0.35, logoHeight = 0.35;
-      const logoTexture = new THREE.TextureLoader().load('https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/logoUrbainar.png');
-      const logoMat = new THREE.MeshBasicMaterial({ map: logoTexture, transparent: true, side: THREE.DoubleSide });
-      const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(logoWidth, logoHeight), logoMat);
-      logoPlane.position.set(0.9 / 2 + logoWidth / 2 + 0.08, 1.15, 0.06);
+      const logoWidth = 0.35;
+      const logoHeight = 0.35;
+      const logoGeo = new THREE.PlaneGeometry(logoWidth, logoHeight);
+      const logoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/logoUrbainar.png';
+      const logoTexture = new THREE.TextureLoader().load(logoUrl);
+      const logoMat = new THREE.MeshBasicMaterial({
+        map: logoTexture,
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+      const logoPlane = new THREE.Mesh(logoGeo, logoMat);
+      logoPlane.position.set(
+        0.9 / 2 + logoWidth / 2 + 0.08,
+        1.15,
+        0.06
+      );
       boardGroup.add(logoPlane);
 
       scene.add(boardGroup);
@@ -567,21 +861,25 @@
 
     function onSelect() {
       if (!reticle.visible || !videoTexture) return;
-      createBoardIfNeeded();
 
+      createBoardIfNeeded();
       boardGroup.position.setFromMatrixPosition(reticle.matrix);
 
       const camPos = new THREE.Vector3();
       camera.getWorldPosition(camPos);
+
       const objPos = new THREE.Vector3();
       boardGroup.getWorldPosition(objPos);
+
       const dir = new THREE.Vector3().subVectors(camPos, objPos);
       const angleY = Math.atan2(dir.x, dir.z);
+
       boardGroup.rotation.set(0, angleY, 0);
     }
 
     function parseUrlParamsAndLoadVideos() {
       const params = new URLSearchParams(window.location.search);
+
       const videosParam = params.get('videos');
       if (videosParam) {
         window.videos = videosParam.split(',').map(v => v.trim()).filter(v => v.length > 0);
@@ -591,9 +889,9 @@
       }
 
       usernames = parseListParam(params.get('usernames'), window.videos.length, 'UrbainAR');
-      dates = parseListParam(params.get('dates'), window.videos.length, 'Date 12/2025');
-      likesList = parseNumberListParam(params.get('likes'), window.videos.length, 124);
-      viewsList = parseNumberListParam(params.get('views'), window.videos.length, 654);
+      dates = parseListParam(params.get('dates'), window.videos.length, '12/2025');
+      likesList = parseNumberListParam(params.get('likes'), window.videos.length, 0);
+      viewsList = parseNumberListParam(params.get('views'), window.videos.length, 0);
 
       document.getElementById('video-count').textContent =
         window.videos.length > 0 ? `Vidéo 1/${window.videos.length}` : 'Aucune vidéo';
@@ -601,23 +899,29 @@
       updateNavButtonsState();
     }
 
-    function parseListParam(param, targetLength, defVal) {
-      if (!param) return new Array(targetLength).fill(defVal);
+    function parseListParam(param, targetLength, defaultValue) {
+      if (!param) return new Array(targetLength).fill(defaultValue);
       const arr = param.split(',').map(v => v.trim());
-      while (arr.length < targetLength) arr.push(defVal);
+      while (arr.length < targetLength) arr.push(defaultValue);
       return arr.slice(0, targetLength);
     }
-    function parseNumberListParam(param, targetLength, defVal) {
-      if (!param) return new Array(targetLength).fill(defVal);
-      const arr = param.split(',').map(v => parseInt(v.trim(), 10) || defVal);
-      while (arr.length < targetLength) arr.push(defVal);
+
+    function parseNumberListParam(param, targetLength, defaultValue) {
+      if (!param) return new Array(targetLength).fill(defaultValue);
+      const arr = param.split(',').map(v => parseInt(v.trim(), 10) || defaultValue);
+      while (arr.length < targetLength) arr.push(defaultValue);
       return arr.slice(0, targetLength);
     }
 
     function setupVideoElement() {
       videoElement = document.getElementById('video');
       if (!videoElement) return;
-      videoElement.addEventListener('ended', () => { videoElement.currentTime = 0; videoElement.play().catch(() => {}); });
+
+      videoElement.addEventListener('ended', () => {
+        videoElement.currentTime = 0;
+        videoElement.play().catch(() => {});
+      });
+
       videoTexture = new THREE.VideoTexture(videoElement);
       videoTexture.colorSpace = THREE.SRGBColorSpace;
     }
@@ -625,24 +929,45 @@
     function setupFrameVideoElement() {
       frameVideoElement = document.getElementById('frameVideo');
       if (!frameVideoElement) return;
-      frameVideoElement.src = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/frameUrbainar.mp4';
-      frameVideoElement.muted = true; frameVideoElement.load();
+
+      const frameVideoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/frameUrbainar.mp4';
+      frameVideoElement.src = frameVideoUrl;
+      frameVideoElement.muted = true;
+      frameVideoElement.load();
+
       frameVideoTexture = new THREE.VideoTexture(frameVideoElement);
       frameVideoTexture.colorSpace = THREE.SRGBColorSpace;
     }
 
     function setupInfoCanvas() {
-      // Créées dans createBoardIfNeeded pour être synchronisées avec les meshes
-      // mais on dessine aussi la 1ère fois ici si nécessaire
+      infoCanvas = document.createElement('canvas');
+      infoCanvas.width = 512;
+      infoCanvas.height = 256;
+      infoCtx = infoCanvas.getContext('2d');
+
+      socialCanvas = document.createElement('canvas');
+      socialCanvas.width = 256;
+      socialCanvas.height = 512;
+      socialCtx = socialCanvas.getContext('2d');
+
+      drawInfoText(0);
+      drawSocialColumn(0);
     }
 
     function drawInfoText(index) {
       if (!infoCtx) return;
+
       const username = usernames[index] || 'UrbainAR';
-      const date = dates[index] || 'Date 12/2025';
+      const date = dates[index] || '12/2025';
+
       infoCtx.clearRect(0, 0, infoCanvas.width, infoCanvas.height);
+
       infoCtx.fillStyle = 'rgba(0,0,0,0.75)';
-      const r = 28, w = infoCanvas.width - 40, h = infoCanvas.height - 40, x = 20, y = 20;
+      const r = 28;
+      const w = infoCanvas.width - 40;
+      const h = infoCanvas.height - 40;
+      const x = 20;
+      const y = 20;
       infoCtx.beginPath();
       infoCtx.moveTo(x + r, y);
       infoCtx.lineTo(x + w - r, y);
@@ -655,24 +980,37 @@
       infoCtx.quadraticCurveTo(x, y, x + r, y);
       infoCtx.closePath();
       infoCtx.fill();
+
       infoCtx.fillStyle = '#ffffff';
       infoCtx.font = 'bold 32px system-ui';
       infoCtx.textBaseline = 'top';
       infoCtx.fillText(username, 40, 40);
+
       infoCtx.font = '24px system-ui';
       infoCtx.fillStyle = '#cccccc';
       infoCtx.fillText(date, 40, 86);
+
       if (infoTexture) infoTexture.needsUpdate = true;
     }
 
     function drawSocialColumn(index) {
       if (!socialCtx) return;
+
       const likes = likesList[index] ?? 0;
       const views = viewsList[index] ?? 0;
-      const w = socialCanvas.width, h = socialCanvas.height;
+
+      const w = socialCanvas.width;
+      const h = socialCanvas.height;
+
       socialCtx.clearRect(0, 0, w, h);
+
       socialCtx.fillStyle = 'rgba(0,0,0,0.75)';
-      const r = 40, padX = 40, padY = 40, boxW = w - padX * 2, boxH = h - padY * 2;
+      const r = 40;
+      const padX = 40;
+      const padY = 40;
+      const boxW = w - padX * 2;
+      const boxH = h - padY * 2;
+
       socialCtx.beginPath();
       socialCtx.moveTo(padX + r, padY);
       socialCtx.lineTo(padX + boxW - r, padY);
@@ -685,23 +1023,39 @@
       socialCtx.quadraticCurveTo(padX, padY, padX + r, padY);
       socialCtx.closePath();
       socialCtx.fill();
+
       socialCtx.textAlign = 'center';
       socialCtx.textBaseline = 'middle';
-      const cx = w / 2;
-      let cy = padY + boxH * 0.30;
-      socialCtx.font = '40px system-ui'; socialCtx.fillStyle = '#ffffff'; socialCtx.fillText('❤️', cx, cy - 30);
-      socialCtx.font = '28px system-ui'; socialCtx.fillText(`${likes}`, cx, cy + 18);
-      cy = padY + boxH * 0.68;
-      socialCtx.font = '40px system-ui'; socialCtx.fillText('👁', cx, cy - 30);
-      socialCtx.font = '28px system-ui'; socialCtx.fillText(`${views}`, cx, cy + 18);
+
+      const centerX = w / 2;
+      let centerY = padY + boxH * 0.30;
+
+      socialCtx.font = '40px system-ui';
+      socialCtx.fillStyle = '#ffffff';
+      socialCtx.fillText('❤️', centerX, centerY - 30);
+
+      socialCtx.font = '28px system-ui';
+      socialCtx.fillText(`${likes}`, centerX, centerY + 18);
+
+      centerY = padY + boxH * 0.68;
+
+      socialCtx.font = '40px system-ui';
+      socialCtx.fillText('👁', centerX, centerY - 30);
+
+      socialCtx.font = '28px system-ui';
+      socialCtx.fillText(`${views}`, centerX, centerY + 18);
+
       if (socialTexture) socialTexture.needsUpdate = true;
     }
 
     function loadVideo(index) {
       if (!window.videos || window.videos.length === 0) return;
       if (index < 0 || index >= window.videos.length) return;
+
       currentIndex = index;
+
       if (!videoElement) videoElement = document.getElementById('video');
+
       const url = window.videos[index];
       videoElement.src = url;
       videoElement.muted = !soundEnabled;
@@ -709,12 +1063,14 @@
 
       document.getElementById('video-title').textContent = 'Vidéo UrbainAR';
       document.getElementById('video-meta').textContent =
-        window.videos.length > 1 ? 'Flèches pour changer de vidéo à ce spot.' : 'Vidéo depuis UrbainAR (une seule vidéo).';
+        window.videos.length > 1
+          ? 'Utilise ⟵ ⟶ pour changer de vidéo.'
+          : 'Vidéo UrbainAR.';
+
       document.getElementById('video-count').textContent = `Vidéo ${index + 1}/${window.videos.length}`;
 
-      // Si le board est déjà créé, mettre à jour les infos
-      if (infoCtx) drawInfoText(index);
-      if (socialCtx) drawSocialColumn(index);
+      drawInfoText(index);
+      drawSocialColumn(index);
       updateNavButtonsState();
     }
     window.loadVideo = loadVideo;
@@ -722,53 +1078,73 @@
     function updateNavButtonsState() {
       const btnPrev = document.getElementById('btn-prev');
       const btnNext = document.getElementById('btn-next');
+
       if (!btnPrev || !btnNext) return;
-      if (window.videos.length <= 1) { btnPrev.disabled = true; btnNext.disabled = true; }
-      else { btnPrev.disabled = currentIndex === 0; btnNext.disabled = currentIndex === window.videos.length - 1; }
+
+      if (window.videos.length <= 1) {
+        btnPrev.disabled = true;
+        btnNext.disabled = true;
+      } else {
+        btnPrev.disabled = currentIndex === 0;
+        btnNext.disabled = currentIndex === window.videos.length - 1;
+      }
     }
 
     function playCurrentVideo() {
       if (!videoElement) return;
-      videoElement.play()
-        .then(() => {
-          if (frameVideoElement && frameVideoElement.paused) frameVideoElement.play().catch(() => {});
-        })
-        .catch(() => {
-          soundEnabled = false;
-          videoElement.muted = true;
-          videoElement.play().catch(() => {});
-          const btn = document.getElementById('btn-sound');
-          if (btn) { btn.textContent = '🔇'; btn.title = 'Son OFF'; }
-          if (frameVideoElement && frameVideoElement.paused) frameVideoElement.play().catch(() => {});
-        });
+
+      // Essaye de jouer avec le réglage de son actuel (si bloqué, on affichera le hint)
+      tryPlayWithCurrentSoundSetting();
+
+      if (frameVideoElement && frameVideoElement.paused) {
+        frameVideoElement.play().catch(() => {});
+      }
     }
     window.playCurrentVideo = playCurrentVideo;
 
-    window.nextVideo = function () { if (currentIndex < window.videos.length - 1) { loadVideo(currentIndex + 1); playCurrentVideo(); } };
-    window.prevVideo = function () { if (currentIndex > 0) { loadVideo(currentIndex - 1); playCurrentVideo(); } };
+    window.nextVideo = function () {
+      if (currentIndex < window.videos.length - 1) {
+        loadVideo(currentIndex + 1);
+        playCurrentVideo();
+      }
+    };
+
+    window.prevVideo = function () {
+      if (currentIndex > 0) {
+        loadVideo(currentIndex - 1);
+        playCurrentVideo();
+      }
+    };
+
     window.toggleSound = function () {
       soundEnabled = !soundEnabled;
-      if (videoElement) videoElement.muted = !soundEnabled;
       const btn = document.getElementById('btn-sound');
       btn.textContent = soundEnabled ? '🔊' : '🔇';
       btn.title = soundEnabled ? 'Son ON' : 'Son OFF';
-    };
-    window.closeAr = function () {
-      if (history.length > 1) history.back(); else window.close();
+
+      // IMPORTANT: on relance play() sur un vrai geste utilisateur (clic bouton)
+      tryPlayWithCurrentSoundSetting();
     };
 
-    window.addEventListener('click', () => {
-      if (videoElement && videoElement.paused) videoElement.play().catch(() => {});
-      if (frameVideoElement && frameVideoElement.paused) frameVideoElement.play().catch(() => {});
+    window.closeAr = function () {
+      if (history.length > 1) history.back();
+      else window.close();
+    };
+
+    // Premier geste utilisateur: tentative d'unlock audio (utile si autoplay bloqué)
+    window.addEventListener('pointerup', () => {
+      tryPlayWithCurrentSoundSetting();
     }, { once: true });
 
     // ---- RENDER ----
     let noHitFrames = 0;
+
     function render(timestamp, frame) {
       const session = renderer.xr.getSession();
       if (session && hitTestSourceRequested && hitTestSource && frame) {
         const referenceSpace = renderer.xr.getReferenceSpace();
         const hitTestResults = frame.getHitTestResults(hitTestSource);
+
         if (hitTestResults.length > 0) {
           noHitFrames = 0;
           const hit = hitTestResults[0];
@@ -780,25 +1156,34 @@
           noHitFrames++;
           if (noHitFrames > 120) {
             const meta = document.getElementById('video-meta');
-            if (meta) meta.textContent = "Déplace ton téléphone vers un sol contrasté et mieux éclairé.";
+            if (meta) {
+              meta.textContent = "Déplace ton téléphone : vise un sol contrasté et mieux éclairé.";
+            }
           }
         }
       }
 
       const t = timestamp * 0.001;
-      if (frameMatGlobal) frameMatGlobal.emissiveIntensity = 1.5 + Math.sin(t * 2.0) * 0.4;
+
+      if (frameMatGlobal) {
+        frameMatGlobal.emissiveIntensity = 1.5 + Math.sin(t * 2.0) * 0.4;
+      }
+
       if (groundPlane) {
         const baseOpacity = 0.30;
         const extra = Math.abs(Math.sin(t * 1.5)) * 0.15;
         groundPlane.material.opacity = baseOpacity + extra;
+
         const scale = 1.0 + Math.sin(t * 1.2) * 0.05;
         groundPlane.scale.set(scale, scale, 1);
       }
+
       renderer.render(scene, camera);
     }
 
     if (!('xr' in navigator)) {
-      document.getElementById('video-meta').textContent = "WebXR AR non supporté sur ce navigateur (ouvre dans Chrome Android).";
+      document.getElementById('video-meta').textContent =
+        "WebXR AR non supporté sur ce navigateur (ouvre dans Chrome Android).";
       console.error("navigator.xr non disponible");
     } else {
       init();
