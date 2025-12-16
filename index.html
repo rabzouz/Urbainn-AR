@@ -769,41 +769,48 @@
     }
 
     // ✅ Mise à jour: support payload= (priorité), sinon videos=, sinon video=
-    function parseUrlParamsAndLoadVideos(){
-      const params = new URLSearchParams(window.location.search);
+   function parseUrlParamsAndLoadVideos(){
+  const params = new URLSearchParams(window.location.search); // valeurs déjà décodées [web:352]
 
-      const payload = params.get("payload");
-      if (payload) {
-        const p = parsePayloadVideos(payload);
+  const payload = params.get("payload");
+  if (payload) {
+    const p = parsePayloadVideos(payload);
 
-        window.videos = p.urls;
+    window.videos = p.urls;
 
-        // si payload ne fournit pas un champ, fallback sur query string
-        usernames  = p.usernames.length  ? p.usernames  : parseListParam(params.get('usernames'),  window.videos.length, 'UrbainAR');
-        timestamps = p.timestamps.length ? p.timestamps : parseNumberListParam(params.get('timestamps'), window.videos.length, 0);
-        likesList  = p.likes.length      ? p.likes      : parseNumberListParam(params.get('likes'),      window.videos.length, 0);
-        viewsList  = p.views.length      ? p.views      : parseNumberListParam(params.get('views'),      window.videos.length, 0);
+    // si payload ne fournit pas un champ, fallback sur query string
+    usernames  = p.usernames.length  ? p.usernames  : parseListParam(params.get('usernames'),  window.videos.length, 'UrbainAR');
+    timestamps = p.timestamps.length ? p.timestamps : parseNumberListParam(params.get('timestamps'), window.videos.length, 0);
+    likesList  = p.likes.length      ? p.likes      : parseNumberListParam(params.get('likes'),      window.videos.length, 0);
+    viewsList  = p.views.length      ? p.views      : parseNumberListParam(params.get('views'),      window.videos.length, 0);
 
-      } else {
-        const videosParam = params.get('videos');
-        if (videosParam) {
-          window.videos = videosParam.split(',').map(v => v.trim()).filter(v => v.length > 0);
-        } else {
-          const videoUrl = params.get('video');
-          window.videos = videoUrl ? [videoUrl] : [];
-        }
-
-        usernames  = parseListParam(params.get('usernames'),  window.videos.length, 'UrbainAR');
-        timestamps = parseNumberListParam(params.get('timestamps'), window.videos.length, 0);
-        likesList  = parseNumberListParam(params.get('likes'),      window.videos.length, 0);
-        viewsList  = parseNumberListParam(params.get('views'),      window.videos.length, 0);
-      }
-
-      document.getElementById('video-count').textContent =
-        window.videos.length > 0 ? `Vidéo 1/${window.videos.length}` : 'Aucune vidéo';
-
-      updateNavButtonsState();
+  } else {
+    const videosParam = params.get('videos');
+    if (videosParam) {
+      // ✅ IMPORTANT: decodeURIComponent pour chaque URL encodée depuis Android (Uri.encode)
+      window.videos = videosParam
+        .split(',')
+        .map(v => v.trim())
+        .filter(v => v.length > 0)
+        .map(v => {
+          try { return decodeURIComponent(v); } catch (_) { return v; } // [web:379]
+        });
+    } else {
+      const videoUrl = params.get('video');
+      window.videos = videoUrl ? [videoUrl] : [];
     }
+
+    usernames  = parseListParam(params.get('usernames'),  window.videos.length, 'UrbainAR');
+    timestamps = parseNumberListParam(params.get('timestamps'), window.videos.length, 0);
+    likesList  = parseNumberListParam(params.get('likes'),      window.videos.length, 0);
+    viewsList  = parseNumberListParam(params.get('views'),      window.videos.length, 0);
+  }
+
+  document.getElementById('video-count').textContent =
+    window.videos.length > 0 ? `Vidéo 1/${window.videos.length}` : 'Aucune vidéo';
+
+  updateNavButtonsState();
+}
 
     function init() {
       scene = new THREE.Scene();
