@@ -90,54 +90,53 @@
     }
     #btn-close:active { transform: scale(0.98); }
 
-/* --- Dock contrôles (vertical à droite, ne chevauche pas Start AR) --- */
-#controls-dock{
-  position: fixed;
-  right: 14px;
-  left: auto;
+    /* --- Dock contrôles (vertical à droite, ne chevauche pas Start AR) --- */
+    #controls-dock{
+      position: fixed;
+      right: 14px;
+      left: auto;
 
-  top: 50%;
-  bottom: auto;
-  transform: translateY(-50%);
+      top: 50%;
+      bottom: auto;
+      transform: translateY(-50%);
 
-  z-index: 35;
+      z-index: 35;
 
-  display: flex;
-  flex-direction: column; /* vertical */
-  align-items: center;
-  gap: 10px;
+      display: flex;
+      flex-direction: column; /* vertical */
+      align-items: center;
+      gap: 10px;
 
-  padding: 10px 10px;
-  border-radius: 18px;
+      padding: 10px 10px;
+      border-radius: 18px;
 
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
 
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: var(--shadow);
-}
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: var(--shadow);
+    }
 
-#controls-dock button{
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  cursor: pointer;
+    #controls-dock button{
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      cursor: pointer;
 
-  color: #fff;
-  background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(255,255,255,0.40);
+      color: #fff;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.40);
 
-  display: grid;
-  place-items: center;
-  font-size: 18px;
-}
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
 
-#controls-dock button:disabled{
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
+    #controls-dock button:disabled{
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
 
     /* mini loader dans le dock */
     #mini-loader{
@@ -482,7 +481,7 @@
       <div class="sheetContent" id="sheetContent">
         <div class="emptyState" id="emptyState">
           Aucune vidéo fournie.<br><br>
-          Ouvre avec : <b>?videos=url1,url2</b> (optionnel: usernames, timestamps, likes, views).
+          Ouvre avec : <b>?videos=url1,url2</b> ou <b>?payload=...</b>
         </div>
         <div id="videoList"></div>
       </div>
@@ -524,7 +523,7 @@
     let currentIndex = 0;
 
     let usernames = [];
-    let timestamps = []; // <-- publication réelle en ms si tu passes timestamps=
+    let timestamps = [];
     let likesList = [];
     let viewsList = [];
 
@@ -666,7 +665,7 @@
         openVolume();
         const v = parseFloat(volumeSlider.value || '1');
         if (videoElement) {
-          videoElement.volume = v;            // 0..1 [web:901]
+          videoElement.volume = v;
           videoElement.muted = (v <= 0.001);
         }
         const btn = document.getElementById('btn-mute');
@@ -684,7 +683,7 @@
       const next = (cur > 0.001) ? 0 : 1;
 
       if (volumeSlider) volumeSlider.value = String(next);
-      videoElement.volume = next;             // 0..1 [web:901]
+      videoElement.volume = next;
       videoElement.muted = (next <= 0.001);
 
       const btn = document.getElementById('btn-mute');
@@ -694,7 +693,7 @@
     };
 
     // --- Date/heure publication ---
-    const fmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" }); // [web:923]
+    const fmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" });
 
     function formatPublishedAt(idx){
       const ms = Number(timestamps[idx]);
@@ -708,7 +707,7 @@
       if (!videoElement) return;
 
       const vol = parseFloat(volumeSlider?.value || '1');
-      videoElement.volume = vol;              // 0..1 [web:901]
+      videoElement.volume = vol;
       videoElement.muted = (vol <= 0.001);
 
       try {
@@ -716,6 +715,94 @@
       } catch (e) {
         toast("Tape l’écran ou bouge le volume pour autoriser le son.");
       }
+    }
+
+    // ✅ base64url -> utf8 (padding + TextDecoder)
+    function decodeBase64UrlToUtf8(b64url){
+      const b64 = String(b64url).replace(/-/g, "+").replace(/_/g, "/");
+      const pad = b64.length % 4;
+      const padded = pad ? (b64 + "=".repeat(4 - pad)) : b64;
+
+      const bin = atob(padded);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+      return new TextDecoder("utf-8").decode(bytes);
+    }
+
+    // ✅ parse payload JSON { v:1, videos:[{url,lat,lng,title,thumb,username,timestamp,likes,views,...}] }
+    function parsePayloadVideos(payloadStr){
+      try{
+        const jsonStr = decodeBase64UrlToUtf8(payloadStr);
+        const data = JSON.parse(jsonStr);
+
+        const vids = Array.isArray(data?.videos) ? data.videos : [];
+
+        const urls = vids
+          .map(v => (v?.url || v?.videoUrl || "").trim())
+          .filter(u => u.length > 0);
+
+        const u = vids.map(v => (v?.username || v?.user || "").trim());
+        const t = vids.map(v => Number(v?.timestamp || v?.publishedAt || 0));
+        const l = vids.map(v => Number(v?.likes || 0));
+        const vw = vids.map(v => Number(v?.views || 0));
+
+        return { urls, usernames: u, timestamps: t, likes: l, views: vw };
+      } catch (e){
+        console.error("payload decode error:", e);
+        return { urls: [], usernames: [], timestamps: [], likes: [], views: [] };
+      }
+    }
+
+    function parseListParam(param, targetLength, defaultValue){
+      if (!param) return new Array(targetLength).fill(defaultValue);
+      const arr = param.split(',').map(v => v.trim());
+      while (arr.length < targetLength) arr.push(defaultValue);
+      return arr.slice(0, targetLength);
+    }
+
+    function parseNumberListParam(param, targetLength, defaultValue){
+      if (!param) return new Array(targetLength).fill(defaultValue);
+      const arr = param.split(',').map(v => parseInt(v.trim(), 10) || defaultValue);
+      while (arr.length < targetLength) arr.push(defaultValue);
+      return arr.slice(0, targetLength);
+    }
+
+    // ✅ Mise à jour: support payload= (priorité), sinon videos=, sinon video=
+    function parseUrlParamsAndLoadVideos(){
+      const params = new URLSearchParams(window.location.search);
+
+      const payload = params.get("payload");
+      if (payload) {
+        const p = parsePayloadVideos(payload);
+
+        window.videos = p.urls;
+
+        // si payload ne fournit pas un champ, fallback sur query string
+        usernames  = p.usernames.length  ? p.usernames  : parseListParam(params.get('usernames'),  window.videos.length, 'UrbainAR');
+        timestamps = p.timestamps.length ? p.timestamps : parseNumberListParam(params.get('timestamps'), window.videos.length, 0);
+        likesList  = p.likes.length      ? p.likes      : parseNumberListParam(params.get('likes'),      window.videos.length, 0);
+        viewsList  = p.views.length      ? p.views      : parseNumberListParam(params.get('views'),      window.videos.length, 0);
+
+      } else {
+        const videosParam = params.get('videos');
+        if (videosParam) {
+          window.videos = videosParam.split(',').map(v => v.trim()).filter(v => v.length > 0);
+        } else {
+          const videoUrl = params.get('video');
+          window.videos = videoUrl ? [videoUrl] : [];
+        }
+
+        usernames  = parseListParam(params.get('usernames'),  window.videos.length, 'UrbainAR');
+        timestamps = parseNumberListParam(params.get('timestamps'), window.videos.length, 0);
+        likesList  = parseNumberListParam(params.get('likes'),      window.videos.length, 0);
+        viewsList  = parseNumberListParam(params.get('views'),      window.videos.length, 0);
+      }
+
+      document.getElementById('video-count').textContent =
+        window.videos.length > 0 ? `Vidéo 1/${window.videos.length}` : 'Aucune vidéo';
+
+      updateNavButtonsState();
     }
 
     function init() {
@@ -780,7 +867,7 @@
         playCurrentVideo();
       } else {
         document.getElementById('video-title').textContent = 'Aucune vidéo';
-        document.getElementById('video-meta').textContent = "Reviens depuis la carte UrbainAR (ou passe ?videos=...).";
+        document.getElementById('video-meta').textContent = "Reviens depuis la carte UrbainAR (ou passe ?videos=... / ?payload=...).";
         document.getElementById('video-count').textContent = "0 vidéo";
       }
 
@@ -895,45 +982,6 @@
 
       boardGroup.rotation.set(0, angleY, 0);
       toast("Placée.");
-    }
-
-    function parseUrlParamsAndLoadVideos(){
-      const params = new URLSearchParams(window.location.search);
-
-      const videosParam = params.get('videos');
-      if (videosParam) {
-        window.videos = videosParam.split(',').map(v => v.trim()).filter(v => v.length > 0);
-      } else {
-        const videoUrl = params.get('video');
-        if (videoUrl) window.videos = [videoUrl];
-      }
-
-      usernames = parseListParam(params.get('usernames'), window.videos.length, 'UrbainAR');
-
-      // IMPORTANT: timestamps= liste de millisecondes (publiée à …)
-      timestamps = parseNumberListParam(params.get('timestamps'), window.videos.length, 0);
-
-      likesList = parseNumberListParam(params.get('likes'), window.videos.length, 0);
-      viewsList = parseNumberListParam(params.get('views'), window.videos.length, 0);
-
-      document.getElementById('video-count').textContent =
-        window.videos.length > 0 ? `Vidéo 1/${window.videos.length}` : 'Aucune vidéo';
-
-      updateNavButtonsState();
-    }
-
-    function parseListParam(param, targetLength, defaultValue){
-      if (!param) return new Array(targetLength).fill(defaultValue);
-      const arr = param.split(',').map(v => v.trim());
-      while (arr.length < targetLength) arr.push(defaultValue);
-      return arr.slice(0, targetLength);
-    }
-
-    function parseNumberListParam(param, targetLength, defaultValue){
-      if (!param) return new Array(targetLength).fill(defaultValue);
-      const arr = param.split(',').map(v => parseInt(v.trim(), 10) || defaultValue);
-      while (arr.length < targetLength) arr.push(defaultValue);
-      return arr.slice(0, targetLength);
     }
 
     function setupVideoElement(){
@@ -1079,7 +1127,7 @@
       videoElement.src = url;
 
       const vol = parseFloat(volumeSlider?.value || '1');
-      videoElement.volume = vol;              // 0..1 [web:901]
+      videoElement.volume = vol;
       videoElement.muted = (vol <= 0.001);
 
       setLoading(true);
