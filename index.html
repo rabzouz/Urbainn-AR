@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>UrbainAR – Réalité Augmentée Urbaine</title>
-  <meta name="description" content="Découvrez les vidéos AR géolocalisées dans votre ville avec UrbainAR." />
-  <meta property="og:title" content="UrbainAR – Vidéo AR" />
-  <meta property="og:description" content="Regardez cette vidéo en réalité augmentée sur UrbainAR." />
+  <title>UrbainAR â RÃ©alitÃ© AugmentÃ©e Urbaine</title>
+  <meta name="description" content="DÃ©couvrez les vidÃ©os AR gÃ©olocalisÃ©es dans votre ville avec UrbainAR." />
+  <meta property="og:title" content="UrbainAR â VidÃ©o AR" />
+  <meta property="og:description" content="Regardez cette vidÃ©o en rÃ©alitÃ© augmentÃ©e sur UrbainAR." />
   <meta property="og:image" content="https://webar.urbainar.com/og-preview.jpg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" />
@@ -36,7 +36,7 @@
       overflow-x: hidden;
     }
 
-    /* ── Barre de chargement haut de page (style YouTube) ───────── */
+    /* ââ Barre de chargement haut de page (style YouTube) âââââââââ */
     #top-bar {
       position: fixed;
       top: 0; left: 0;
@@ -49,7 +49,7 @@
     }
     #top-bar.done { width: 100% !important; opacity: 0; }
 
-    /* ── Fond dégradé ambiant ───────────────────────────────────── */
+    /* ââ Fond dÃ©gradÃ© ambiant âââââââââââââââââââââââââââââââââââââ */
     body::before {
       content: '';
       position: fixed;
@@ -61,7 +61,7 @@
       z-index: 0;
     }
 
-    /* ── Layout ─────────────────────────────────────────────────── */
+    /* ââ Layout âââââââââââââââââââââââââââââââââââââââââââââââââââ */
     .page {
       position: relative;
       z-index: 1;
@@ -72,7 +72,7 @@
       padding: 0 16px 48px;
     }
 
-    /* ── Header ─────────────────────────────────────────────────── */
+    /* ââ Header âââââââââââââââââââââââââââââââââââââââââââââââââââ */
     header {
       width: 100%;
       max-width: 600px;
@@ -89,17 +89,22 @@
       text-decoration: none;
     }
 
-    /* Logo icône SVG — pin AR */
+    /* Logo icÃ´ne SVG â pin AR */
     .logo-icon {
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
       border-radius: 14px;
-      background: linear-gradient(145deg, #5B41FF, #A040C0);
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      box-shadow: 0 4px 18px rgba(123,97,255,.45), inset 0 1px 0 rgba(255,255,255,.15);
+      box-shadow: 0 4px 18px rgba(0,180,100,.40);
+    }
+    .logo-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .logo-text-wrap { display: flex; flex-direction: column; gap: 1px; }
@@ -133,7 +138,7 @@
       backdrop-filter: blur(4px);
     }
 
-    /* ── Card vidéo ─────────────────────────────────────────────── */
+    /* ââ Card vidÃ©o âââââââââââââââââââââââââââââââââââââââââââââââ */
     .card {
       width: 100%;
       max-width: 600px;
@@ -180,7 +185,7 @@
       gap: 5px;
     }
 
-    /* ── Wrapper vidéo ──────────────────────────────────────────── */
+    /* ââ Wrapper vidÃ©o ââââââââââââââââââââââââââââââââââââââââââââ */
     .video-wrapper {
       position: relative;
       width: 100%;
@@ -224,7 +229,7 @@
     .play-btn:hover { transform: scale(1.08); background: rgba(123,97,255,1); }
     .play-btn svg { margin-left: 5px; }
 
-    /* ── Spinner de chargement vidéo ────────────────────────────── */
+    /* ââ Spinner de chargement vidÃ©o ââââââââââââââââââââââââââââââ */
     #video-loading {
       position: absolute;
       inset: 0;
@@ -271,7 +276,7 @@
       border-radius: 0 2px 2px 0;
     }
 
-    /* ── Tag localisation ───────────────────────────────────────── */
+    /* ââ Tag localisation âââââââââââââââââââââââââââââââââââââââââ */
     .location-tag {
       display: flex;
       align-items: center;
@@ -288,7 +293,7 @@
     .location-tag:hover { background: rgba(123,97,255,.13); }
     .location-tag .coords { font-family: 'Courier New', monospace; color: var(--text3); font-size: 11px; }
 
-    /* ── Ligne stats ─────────────────────────────────────────────── */
+    /* ââ Ligne stats âââââââââââââââââââââââââââââââââââââââââââââââ */
     .stats-row {
       display: flex;
       align-items: center;
@@ -311,7 +316,7 @@
     }
     .stat .emoji { font-size: 14px; }
 
-    /* ── Section AR ──────────────────────────────────────────────── */
+    /* ââ Section AR ââââââââââââââââââââââââââââââââââââââââââââââââ */
     .ar-section {
       width: 100%;
       max-width: 600px;
@@ -351,7 +356,7 @@
       line-height: 1.65;
     }
 
-    /* ── Boutons store ───────────────────────────────────────────── */
+    /* ââ Boutons store âââââââââââââââââââââââââââââââââââââââââââââ */
     .btn-group {
       display: flex;
       gap: 10px;
@@ -408,7 +413,28 @@
     }
     .btn-ios:hover { box-shadow: 0 8px 32px rgba(0,0,0,.5); }
 
-    /* ── Erreur ─────────────────────────────────────────────────── */
+    .btn-test {
+      background: linear-gradient(135deg, #0099CC, #00CC88);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(0,153,204,.35);
+    }
+    .btn-test:hover { box-shadow: 0 8px 32px rgba(0,153,204,.55); }
+
+    .badge-soon {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+      letter-spacing: .3px;
+    }
+
+    /* ââ Erreur âââââââââââââââââââââââââââââââââââââââââââââââââââ */
     .error-card {
       width: 100%;
       max-width: 600px;
@@ -423,7 +449,7 @@
     .error-card h2 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
     .error-card p  { font-size: 14px; color: var(--text2); line-height: 1.6; }
 
-    /* ── Footer ─────────────────────────────────────────────────── */
+    /* ââ Footer âââââââââââââââââââââââââââââââââââââââââââââââââââ */
     footer {
       margin-top: 32px;
       text-align: center;
@@ -434,7 +460,7 @@
     footer a { color: var(--accent); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
 
-    /* ── Skeleton loader ─────────────────────────────────────────── */
+    /* ââ Skeleton loader âââââââââââââââââââââââââââââââââââââââââââ */
     .skeleton-card {
       width: 100%;
       max-width: 600px;
@@ -450,7 +476,7 @@
           border-radius: 8px; }
     @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
-    /* ── Responsive ─────────────────────────────────────────────── */
+    /* ââ Responsive âââââââââââââââââââââââââââââââââââââââââââââââ */
     @media (max-width: 420px) {
       .logo-text { font-size: 17px; }
       .btn-group { flex-direction: column; align-items: stretch; }
@@ -469,27 +495,18 @@
   <!-- Header -->
   <header>
     <a class="logo" href="https://urbainar.com">
-      <div class="logo-icon">
-        <!-- Icône AR / pin géolocalisation -->
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="white" opacity=".95"/>
-          <circle cx="12" cy="9" r="2.8" fill="#5B41FF"/>
-          <!-- Lignes AR -->
-          <line x1="2" y1="4" x2="5.5" y2="6.5" stroke="white" stroke-width="1.2" stroke-linecap="round" opacity=".5"/>
-          <line x1="22" y1="4" x2="18.5" y2="6.5" stroke="white" stroke-width="1.2" stroke-linecap="round" opacity=".5"/>
-        </svg>
-      </div>
+      <div class="logo-icon"><img src="data:image/jpeg;base64,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" alt="UrbainAR" /></div>
       <div class="logo-text-wrap">
         <div class="logo-text">UrbainAR</div>
-        <div class="logo-sub">Réalité Augmentée</div>
+        <div class="logo-sub">RÃ©alitÃ© AugmentÃ©e</div>
       </div>
     </a>
     <span class="badge-ar">WebAR</span>
   </header>
 
-  <!-- Contenu injecté par JS -->
+  <!-- Contenu injectÃ© par JS -->
   <div id="content">
-    <!-- Skeleton loader visible au démarrage -->
+    <!-- Skeleton loader visible au dÃ©marrage -->
     <div class="skeleton-card" id="skeleton">
       <div style="padding:16px 20px 14px; display:flex; gap:12px; align-items:flex-start">
         <div class="sk" style="width:4px; height:40px; border-radius:4px; flex-shrink:0"></div>
@@ -509,13 +526,13 @@
 
   <!-- Footer -->
   <footer>
-    <div>© 2025 UrbainAR · <a href="https://urbainar.com/privacy">Confidentialité</a> · <a href="https://urbainar.com/terms">CGU</a></div>
-    <div style="margin-top:4px">Partagé depuis l'application UrbainAR</div>
+    <div>Â© 2025 UrbainAR Â· <a href="https://urbainar.com/privacy">ConfidentialitÃ©</a> Â· <a href="https://urbainar.com/terms">CGU</a></div>
+    <div style="margin-top:4px">PartagÃ© depuis l'application UrbainAR</div>
   </footer>
 </div>
 
 <script>
-// ── Barre de progression top ──────────────────────────────────────
+// ââ Barre de progression top ââââââââââââââââââââââââââââââââââââââ
 const topBar = document.getElementById('top-bar');
 let barPct = 0;
 const barTimer = setInterval(() => {
@@ -528,7 +545,7 @@ function finishTopBar() {
   setTimeout(() => topBar.classList.add('done'), 300);
 }
 
-// ── Parse URL params ──────────────────────────────────────────────
+// ââ Parse URL params ââââââââââââââââââââââââââââââââââââââââââââââ
 const params   = new URLSearchParams(location.search);
 const videoUrl = params.get('video') || '';
 const lat      = parseFloat(params.get('lat')  || '0');
@@ -543,12 +560,12 @@ function extractTitleFromUrl(url) {
     const slug  = file.replace(/^[^_]*_[^_]*_?/, '').replace(/[-_]/g, ' ').trim();
     if (slug.length > 2) return slug.charAt(0).toUpperCase() + slug.slice(1);
   } catch (_) {}
-  return 'Vidéo UrbainAR';
+  return 'VidÃ©o UrbainAR';
 }
 
 function formatCoords(lat, lng) {
   if (!lat && !lng) return null;
-  return `${Math.abs(lat).toFixed(5)}${lat>=0?'°N':'°S'}, ${Math.abs(lng).toFixed(5)}${lng>=0?'°E':'°O'}`;
+  return `${Math.abs(lat).toFixed(5)}${lat>=0?'Â°N':'Â°S'}, ${Math.abs(lng).toFixed(5)}${lng>=0?'Â°E':'Â°O'}`;
 }
 
 function escHtml(str) {
@@ -557,52 +574,39 @@ function escHtml(str) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Boutons store ─────────────────────────────────────────────────
-const BTN_ANDROID = `
-  <a class="btn btn-android"
-     href="https://play.google.com/store/apps/details?id=com.example.urbainar"
-     target="_blank" rel="noopener">
+// ââ Bouton test âââââââââââââââââââââââââââââââââââââââââââââââââââ
+const BTN_TEST = `
+  <button class="btn btn-test" onclick="openTestMode()" type="button">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-      <path d="M3.18 23.76a2 2 0 0 0 2.73.74l9.4-5.42-2.53-2.53-9.6 7.21zM20.76 10.36 17.6 8.5l-2.82 2.82 2.82 2.82 3.18-1.88a1.5 1.5 0 0 0 0-2.9zM2 1.24A1.5 1.5 0 0 0 1.5 2.5v19a1.5 1.5 0 0 0 .5 1.26l.1.07 10.64-10.64v-.26L2.1 1.17 2 1.24zm12.68 9.08L4.04 0.6l-.04-.03A2 2 0 0 0 1.27.37l12.26 9.2-.85.75z"/>
+      <path d="M8 5v14l11-7z"/>
     </svg>
     <div class="btn-inner">
-      <span class="btn-store-label">Disponible sur</span>
-      <span class="btn-store-name">Google Play</span>
+      <span class="btn-store-label">Tester</span>
+      <span class="btn-store-name">VidÃ©o AR</span>
     </div>
-  </a>`;
+  </button>`;
 
-const BTN_IOS = `
-  <a class="btn btn-ios"
-     href="https://apps.apple.com"
-     target="_blank" rel="noopener">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-    </svg>
-    <div class="btn-inner">
-      <span class="btn-store-label">Bientôt sur</span>
-      <span class="btn-store-name">App Store</span>
-    </div>
-  </a>`;
-
-// ── Rendu principal ───────────────────────────────────────────────
+// ââ Rendu principal âââââââââââââââââââââââââââââââââââââââââââââââ
 const content = document.getElementById('content');
 
 if (!videoUrl) {
-  // Page d'accueil sans vidéo
+  // Page d'accueil sans vidÃ©o
   document.getElementById('skeleton').remove();
   finishTopBar();
   content.innerHTML = `
-    <div class="ar-section" style="margin-top:24px; padding:40px 24px">
-      <div class="ar-icon-wrap">🌆</div>
+  <div class="ar-section" style="margin-top:24px; padding:40px 24px">
+      <div class="ar-icon-wrap">ð</div>
       <h2>Bienvenue sur UrbainAR</h2>
-      <p>Explorez et partagez des vidéos en réalité augmentée géolocalisées dans les rues de votre ville.</p>
-      <div class="btn-group">${BTN_ANDROID}${BTN_IOS}</div>
+      <p>Explorez et partagez des vidÃ©os en rÃ©alitÃ© augmentÃ©e gÃ©olocalisÃ©es dans les rues de votre ville.</p>
+      <div class="btn-group">${BTN_TEST}</div>
+      <div style="margin-top:14px"><span class="badge-soon">ð± Application bientÃ´t sur les stores</span></div>
     </div>`;
 } else {
   const coords     = formatCoords(lat, lng);
   const coordsHtml = coords
-    ? `<a class="location-tag" href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">
-         <span>📍</span>
+    ? `
+      <a class="location-tag" href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">
+         <span>ð<)/span>
          <span>Voir sur la carte</span>
          <span class="coords">${coords}</span>
        </a>`
@@ -618,8 +622,8 @@ if (!videoUrl) {
         <div class="card-title-text">
           <h1 id="video-title">${escHtml(title)}</h1>
           <div class="card-author">
-            <span>📍</span>
-            <span>Partagé depuis UrbainAR</span>
+            <span>ð</span>
+            <span>PartagÃ© depuis UrbainAR</span>
           </div>
         </div>
       </div>
@@ -627,13 +631,13 @@ if (!videoUrl) {
       <div class="video-wrapper">
         <video id="vid" controls playsinline preload="auto"${posterAttr}>
           <source id="vid-src" src="${escHtml(videoUrl)}" type="video/mp4" />
-          Votre navigateur ne supporte pas la lecture vidéo.
+          Votre navigateur ne supporte pas la lecture vidÃ©o.
         </video>
 
         <!-- Spinner de chargement -->
         <div id="video-loading">
           <div class="spinner"></div>
-          <div class="loading-label">Chargement de la vidéo…</div>
+          <div class="loading-label">Chargement de la vidÃ©oâ¦</div>
         </div>
 
         <!-- Barre de buffer -->
@@ -650,22 +654,23 @@ if (!videoUrl) {
       ${coordsHtml}
 
       <div class="stats-row">
-        <div class="stat"><span class="emoji">👁</span> <span id="stat-views">–</span></div>
-        <div class="stat"><span class="emoji">❤️</span> <span id="stat-likes">–</span></div>
-        <div class="stat"><span class="emoji">💬</span> <span id="stat-comments">–</span></div>
+        <div class="stat"><span class="emoji">ð</span> <span id="stat-views">â</span></div>
+        <div class="stat"><span class="emoji">â¤ï¸</span> <span id="stat-likes">â</span></div>
+        <div class="stat"><span class="emoji">ð¬</span> <span id="stat-comments">â</span></div>
       </div>
     </div>
 
     <div class="ar-section">
-      <div class="ar-icon-wrap">📱</div>
-      <h2>Vivre en Réalité Augmentée</h2>
-      <p>Téléchargez UrbainAR pour voir cette vidéo en AR directement dans les rues de votre ville.</p>
-      <div class="btn-group">${BTN_ANDROID}${BTN_IOS}</div>
+      <div class="ar-icon-wrap">ð±</div>
+      <h2>UrbainAR â BientÃ´t disponible</h2>
+      <p>L'application arrive bientÃ´t sur Google Play et App Store. En attendant, testez une autre vidÃ©o AR.</p>
+      <div class="btn-group">${BTN_TEST}</div>
+      <div style="margin-top:14px"><span class="badge-soon">ð± Application bientÃ´t sur les stores</span></div>
     </div>`;
 
   const vid = document.getElementById('vid');
 
-  // ── Gestion du chargement / buffering ──────────────────────────
+  // ââ Gestion du chargement / buffering ââââââââââââââââââââââââââ
   function hideLoader() {
     const loader = document.getElementById('video-loading');
     if (loader) loader.classList.add('hidden');
@@ -675,7 +680,7 @@ if (!videoUrl) {
     if (loader) loader.classList.remove('hidden');
   }
 
-  // Dès que la vidéo peut jouer → masquer le spinner
+  // DÃ¨s que la vidÃ©o peut jouer â masquer le spinner
   vid.addEventListener('canplay',  () => { hideLoader(); finishTopBar(); });
   vid.addEventListener('playing',  () => hideLoader());
   vid.addEventListener('waiting',  () => showLoader());           // re-buffering
@@ -683,8 +688,8 @@ if (!videoUrl) {
   vid.addEventListener('error',    () => {
     hideLoader(); finishTopBar();
     document.getElementById('video-loading').innerHTML =
-      '<div style="font-size:32px">⚠️</div>' +
-      '<div class="loading-label" style="color:#FF6B6B">Impossible de charger la vidéo</div>';
+      '<div style="font-size:32px">â ï¸</div>' +
+      '<div class="loading-label" style="color:#FF6B6B">Impossible de charger la vidÃ©o</div>';
     document.getElementById('video-loading').classList.remove('hidden');
   });
 
@@ -709,7 +714,7 @@ if (!videoUrl) {
     vid.muted = false;
     document.getElementById('play-overlay').classList.add('hidden');
   }).catch(() => {
-    // Autoplay bloqué → montrer le bouton play après canplay
+    // Autoplay bloquÃ© â montrer le bouton play aprÃ¨s canplay
     vid.addEventListener('canplay', () => {
       document.getElementById('play-overlay').classList.remove('hidden');
     }, { once: true });
@@ -719,7 +724,7 @@ if (!videoUrl) {
   loadFirestoreStats(videoUrl);
 }
 
-// ── Play manuel ───────────────────────────────────────────────────
+// ââ Play manuel âââââââââââââââââââââââââââââââââââââââââââââââââââ
 function playVideo() {
   const vid = document.getElementById('vid');
   if (!vid) return;
@@ -727,7 +732,20 @@ function playVideo() {
   vid.play();
 }
 
-// ── Stats Firestore (API REST publique) ───────────────────────────
+// ââ Test mode : saisie URL vidÃ©o ââââââââââââââââââââââââââââââââââ
+function openTestMode() {
+  const url = prompt('URL de la vidÃ©o Ã  tester :', '');
+  if (url && url.trim()) {
+    const testUrl = new URL(location.href);
+    testUrl.searchParams.set('video', url.trim());
+    if (!testUrl.searchParams.get('lat'))   testUrl.searchParams.set('lat', '48.8566');
+    if (!testUrl.searchParams.get('lng'))   testUrl.searchParams.set('lng', '2.3522');
+    if (!testUrl.searchParams.get('title')) testUrl.searchParams.set('title', 'Test AR');
+    location.href = testUrl.toString();
+  }
+}
+
+// ââ Stats Firestore (API REST publique) âââââââââââââââââââââââââââ
 async function loadFirestoreStats(videoUrl) {
   const PROJECT = 'urbainar';
   try {
@@ -757,7 +775,7 @@ async function loadFirestoreStats(videoUrl) {
       document.getElementById('stat-views').textContent = doc.views?.integerValue || doc.views?.doubleValue || '0';
       document.getElementById('stat-likes').textContent = doc.likes?.integerValue || doc.likes?.doubleValue || '0';
 
-      // Mettre à jour le titre si présent dans Firestore et non passé en paramètre
+      // Mettre Ã  jour le titre si prÃ©sent dans Firestore et non passÃ© en paramÃ¨tre
       const fsTitle = doc.title?.stringValue;
       if (fsTitle && !params.get('title')) {
         document.getElementById('video-title').textContent = fsTitle;
