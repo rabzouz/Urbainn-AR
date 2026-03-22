@@ -95,7 +95,7 @@
       box-shadow: var(--neon);
     }
 
-    #video-title {
+    #video-username {
       font-size: 15px;
       font-weight: 900;
       line-height: 1.2;
@@ -103,14 +103,45 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    #video-meta { font-size: 12px; opacity: 0.85; color: var(--muted); }
+    #video-meta { font-size: 12px; opacity: 0.85; color: var(--muted); margin-top: 1px; }
+    #video-stats {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 5px;
+    }
+    .stat-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      background: rgba(110,231,255,0.08);
+      border: var(--border-glass);
+      border-radius: 999px;
+      padding: 3px 10px;
+      white-space: nowrap;
+    }
+    .stat-chip .chip-icon { font-size: 13px; line-height: 1; }
+    .stat-chip .chip-val  { letter-spacing: 0.3px; }
+    #chip-date .chip-val  { color: var(--muted); font-weight: 600; font-size: 11px; }
+    #chip-likes .chip-icon { color: #ff6b8a; }
+    #chip-likes .chip-val  { color: #ffb3c1; }
+    #chip-views .chip-icon { color: var(--accent); }
+    #chip-views .chip-val  { color: var(--accent2); }
     #video-count {
       font-size: 11px;
-      opacity: 0.8;
+      opacity: 0.7;
       color: var(--accent);
       font-weight: 700;
       letter-spacing: 0.5px;
+      margin-top: 2px;
     }
 
     /* ===== CLOSE BUTTON ===== */
@@ -551,8 +582,22 @@
 <body>
   <div id="xr-overlay">
     <div id="video-info" class="ui">
-      <div id="video-title">Chargement…</div>
+      <div id="video-username">Chargement…</div>
       <div id="video-meta">Start AR puis touche l'écran pour placer la vidéo.</div>
+      <div id="video-stats">
+        <div class="stat-chip" id="chip-date">
+          <span class="chip-icon">🕐</span>
+          <span class="chip-val" id="video-date">—</span>
+        </div>
+        <div class="stat-chip" id="chip-likes">
+          <span class="chip-icon">❤️</span>
+          <span class="chip-val" id="video-likes">0</span>
+        </div>
+        <div class="stat-chip" id="chip-views">
+          <span class="chip-icon">👁</span>
+          <span class="chip-val" id="video-views">0</span>
+        </div>
+      </div>
       <div id="video-count">0 vidéo</div>
     </div>
 
@@ -829,6 +874,13 @@
       return "Date inconnue";
     }
 
+    function formatCount(n){
+      const num = Number(n) || 0;
+      if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+      if (num >= 1_000)     return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
+      return String(num);
+    }
+
     async function tryPlayWithCurrentVolume(){
       if (!videoElement) return;
 
@@ -1010,9 +1062,12 @@
         loadVideo(0);
         playCurrentVideo();
       } else {
-        document.getElementById('video-title').textContent = 'Aucune vidéo';
+        document.getElementById('video-username').textContent = 'UrbainAR';
         document.getElementById('video-meta').textContent = "Reviens depuis la carte UrbainAR (ou passe ?videos=... / ?payload=...).";
-        document.getElementById('video-count').textContent = "0 vidéo";
+        document.getElementById('video-date').textContent  = '—';
+        document.getElementById('video-likes').textContent = '0';
+        document.getElementById('video-views').textContent = '0';
+        document.getElementById('video-count').textContent = '';
       }
 
       // Démarre la vidéo au premier tap (DOM et WebXR)
@@ -1142,14 +1197,15 @@
       socialPlane.position.set(0.9 / 2 + 0.18, -0.1, 0.04);
       boardGroup.add(socialPlane);
 
-      // Logo
+      // Logo — centré au-dessus du board, bien visible
       const logoUrl = 'https://tcsqjgoxeykqmsmqusna.supabase.co/storage/v1/object/public/urbainar-assets/logoUrbainar.png';
       const logoTexture = new THREE.TextureLoader().load(logoUrl);
+      logoTexture.colorSpace = THREE.SRGBColorSpace;
       const logoPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.35, 0.35),
-        new THREE.MeshBasicMaterial({ map: logoTexture, transparent: true, side: THREE.DoubleSide })
+        new THREE.PlaneGeometry(0.55, 0.55),
+        new THREE.MeshBasicMaterial({ map: logoTexture, transparent: true, side: THREE.DoubleSide, alphaTest: 0.05 })
       );
-      logoPlane.position.set(0.9 / 2 + 0.35 / 2 + 0.08, 1.15, 0.06);
+      logoPlane.position.set(0, frameHeight / 2 + 0.36, 0.06);
       boardGroup.add(logoPlane);
 
       scene.add(boardGroup);
@@ -1366,11 +1422,16 @@
       setLoading(true);
       videoElement.load();
 
-      document.getElementById('video-title').textContent = 'Vidéo UrbainAR';
+      // HUD — username, date, likes, vues
+      document.getElementById('video-username').textContent = usernames[index] || 'UrbainAR';
+      document.getElementById('video-date').textContent    = formatPublishedAt(index);
+      document.getElementById('video-likes').textContent   = formatCount(likesList[index] ?? 0);
+      document.getElementById('video-views').textContent   = formatCount(viewsList[index] ?? 0);
       document.getElementById('video-meta').textContent =
-        window.videos.length > 1 ? 'Utilise ⟵ ⟶ pour changer de vidéo.' : 'Vidéo UrbainAR.';
+        window.videos.length > 1 ? 'Utilise ⟵ ⟶ pour changer de vidéo.' : '🎥 Vidéo UrbainAR';
 
-      document.getElementById('video-count').textContent = `Vidéo ${index + 1}/${window.videos.length}`;
+      document.getElementById('video-count').textContent =
+        window.videos.length > 1 ? `${index + 1} / ${window.videos.length}` : '';
 
       drawInfoText(index);
       drawSocialColumn(index);
