@@ -832,6 +832,7 @@
     async function tryPlayWithCurrentVolume(){
       if (!videoElement) return;
 
+      // Applique le volume réel (interaction utilisateur requise pour démuater)
       const vol = parseFloat(volumeSlider?.value || '1');
       videoElement.volume = vol;
       videoElement.muted = (vol <= 0.001);
@@ -839,7 +840,15 @@
       try {
         await videoElement.play();
       } catch (e) {
-        toast("Tape l'écran ou bouge le volume pour autoriser le son.");
+        // Si le navigateur bloque, rejouer en muted comme fallback
+        try {
+          videoElement.muted = true;
+          videoElement.volume = 0;
+          await videoElement.play();
+          toast("Son désactivé (politique navigateur). Touche 🔊 pour activer.");
+        } catch (_) {
+          toast("Impossible de lancer la vidéo. Vérifie l'URL et les droits CORS.");
+        }
       }
     }
 
@@ -1006,7 +1015,16 @@
         document.getElementById('video-count').textContent = "0 vidéo";
       }
 
-      window.addEventListener('pointerup', () => tryPlayWithCurrentVolume(), { once: true });
+      // Démarre la vidéo au premier tap (DOM et WebXR)
+      const _resumeOnce = () => {
+        tryPlayWithCurrentVolume();
+        window.removeEventListener('pointerup', _resumeOnce);
+        window.removeEventListener('touchend', _resumeOnce);
+        window.removeEventListener('click',    _resumeOnce);
+      };
+      window.addEventListener('pointerup', _resumeOnce);
+      window.addEventListener('touchend',  _resumeOnce);
+      window.addEventListener('click',     _resumeOnce);
     }
 
     function onWindowResize(){
@@ -1111,7 +1129,7 @@
       // Info canvas (username / date)
       const infoGeo = new THREE.PlaneGeometry(0.9, 0.4);
       infoTexture = new THREE.CanvasTexture(infoCanvas);
-      const infoMat = new THREE.MeshBasicMaterial({ map: infoTexture, transp!rent: true, side: THREE.DoubleSide });
+      const infoMat = new THREE.MeshBasicMaterial({ map: infoTexture, transparent: true, side: THREE.DoubleSide });
       const infoPlane = new THREE.Mesh(infoGeo, infoMat);
       infoPlane.position.set(0, 1.15, 0.04);
       boardGroup.add(infoPlane);
@@ -1153,6 +1171,10 @@
       const angleY = Math.atan2(dir.x, dir.z);
 
       boardGroup.rotation.set(0, angleY, 0);
+
+      // Utilise l'interaction utilisateur (tap XR) pour lancer la vidéo
+      tryPlayWithCurrentVolume();
+
       toast("Placée.");
     }
 
@@ -1336,9 +1358,10 @@
       const url = window.videos[index];
       videoElement.src = url;
 
-      const vol = parseFloat(volumeSlider?.value || '1');
-      videoElement.volume = vol;
-      videoElement.muted = (vol <= 0.001);
+      // Démarrer muted pour contourner la politique d'autoplay du navigateur.
+      // Le volume réel sera appliqué dès que l'utilisateur interagit (onSelect / tap).
+      videoElement.muted = true;
+      videoElement.volume = 0;
 
       setLoading(true);
       videoElement.load();
