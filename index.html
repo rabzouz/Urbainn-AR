@@ -752,8 +752,9 @@
   </div>
 
   <!-- Vidéos HTML5 -->
-  <video id="video" src="" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" style="display:none"></video>
-  <video id="frameVideo" src="" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous" style="display:none"></video>
+  <!-- Positionnés hors-écran (pas display:none) pour que le GPU iOS décode les frames WebGL -->
+  <video id="video" src="" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" style="position:fixed;opacity:0;pointer-events:none;width:1px;height:1px;top:0;left:0;"></video>
+  <video id="frameVideo" src="" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous" style="position:fixed;opacity:0;pointer-events:none;width:1px;height:1px;top:0;left:0;"></video>
 
   <script type="module">
     import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
@@ -1719,6 +1720,10 @@
         const scale = 1.0 + Math.sin(t * 1.2) * 0.06;
         groundPlane.scale.set(scale, scale, 1);
       }
+
+      // Forcer la mise à jour des textures vidéo à chaque frame (requis sur iOS/Safari)
+      if (videoTexture && videoElement && !videoElement.paused) videoTexture.needsUpdate = true;
+      if (frameVideoTexture && frameVideoElement && !frameVideoElement.paused) frameVideoTexture.needsUpdate = true;
 
       renderer.render(scene, camera);
     }
