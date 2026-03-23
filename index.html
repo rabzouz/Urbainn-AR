@@ -760,6 +760,10 @@
     import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
     import { ARButton } from 'https://unpkg.com/three@0.160.0/examples/jsm/webxr/ARButton.js';
 
+    // ===== SUPABASE CONFIG =====
+    const SUPABASE_URL  = 'https://tcsqjgoxeykqmsmqusna.supabase.co';
+    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjc3FqZ294ZXlrcW1zbXF1c25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTkxMjgsImV4cCI6MjA3OTM3NTEyOH0.uD_cFBkfpTjCyseyKKh-Dn2xqq1DDVKfLBV40Hhdpf0';
+
     let camera, scene, renderer;
     let reticle;
     let hitTestSource = null;
@@ -1249,6 +1253,51 @@
       updateNavButtonsState();
     }
 
+    // ===== NEARBY VIDEOS FROM SUPABASE =====
+    function loadNearbyVideosFromSupabase(){
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const uLat = position.coords.latitude;
+            const uLng = position.coords.longitude;
+            const resp = await fetch(
+              SUPABASE_URL + '/rest/v1/videos?select=video_url,user_id,latitude,longitude,like_count,view_count,created_at&order=created_at.desc&limit=50',
+              { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
+            );
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (!Array.isArray(data) || data.length === 0) return;
+            const nearby = data.filter(v =>
+              v.latitude && v.longitude &&
+              haversineDistance(uLat, uLng, v.latitude, v.longitude) <= 5000
+            );
+            if (nearby.length === 0) return;
+            window.videos = nearby.map(v => v.video_url);
+            usernames  = nearby.map(v => v.user_id || 'UrbainAR');
+            likesList  = nearby.map(v => Number(v.like_count) || 0);
+            viewsList  = nearby.map(v => Number(v.view_count) || 0);
+            timestamps = nearby.map(v => Math.round(new Date(v.created_at).getTime() / 1000));
+            videoLats  = nearby.map(v => v.latitude);
+            videoLngs  = nearby.map(v => v.longitude);
+            userLat = uLat;
+            userLng = uLng;
+            gpsMode = true;
+            const countEl = document.getElementById('video-count');
+            if (countEl) countEl.textContent = 'Vidéo 1/' + window.videos.length;
+            updateNavButtonsState();
+            populateSheetFromVideos();
+            loadVideo(0);
+            playCurrentVideo();
+            const n = window.videos.length;
+            toast('📍 ' + n + ' vidéo' + (n > 1 ? 's' : '') + ' à proximité !', 2800);
+          } catch(e){ console.warn('Nearby videos error:', e); }
+        },
+        () => {},
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+      );
+    }
+
     function init() {
       scene = new THREE.Scene();
 
@@ -1343,6 +1392,9 @@
       window.addEventListener('pointerup', _resumeOnce);
       window.addEventListener('touchend',  _resumeOnce);
       window.addEventListener('click',     _resumeOnce);
+
+      // Fetch nearby videos from Supabase in background
+      loadNearbyVideosFromSupabase();
     }
 
     function onWindowResize(){
@@ -1468,28 +1520,36 @@
 
     function startGPSPlacement(){
       if (!gpsMode) return;
+      arStartHeading = compassHeading;
+
+      // Position already pre-fetched by loadNearbyVideosFromSupabase
+      if (userLat !== null && userLng !== null && videoLats.length > 0) {
+        toast('📍 Placement GPS…', 1500);
+        setupMultiVideoElements();
+        for (let i = 0; i < window.videos.length; i++) {
+          createGPSBoard(i, gpsToArXYZ(videoLats[i], videoLngs[i]));
+        }
+        videoEls.forEach(v => { v.play().catch(() => {}); });
+        return;
+      }
+
+      // Fallback: request GPS now
       toast('📍 Localisation…', 3000);
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           userLat = pos.coords.latitude;
           userLng = pos.coords.longitude;
-          arStartHeading = compassHeading;
-          toast('✅ GPS OK – placement…', 2500);
+          toast('✅ GPS OK…', 2000);
           setupMultiVideoElements();
           for (let i = 0; i < window.videos.length; i++) {
-            const p = gpsToArXYZ(videoLats[i], videoLngs[i]);
-            createGPSBoard(i, p);
+            createGPSBoard(i, gpsToArXYZ(videoLats[i], videoLngs[i]));
           }
           videoEls.forEach(v => { v.play().catch(() => {}); });
         },
-        (err) => {
-          toast('❌ GPS: ' + err.message, 3000);
-          startAutoPlacement();
-        },
+        (err) => { toast('❌ GPS: ' + err.message, 3000); startAutoPlacement(); },
         { enableHighAccuracy: true, timeout: 10000 }
       );
     }
-
     function startAutoPlacement(){
       const n = window.videos.length;
       if (n === 0) return;
