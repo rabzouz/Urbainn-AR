@@ -1277,7 +1277,7 @@
             usernames  = nearby.map(v => v.user_id || 'UrbainAR');
             likesList  = nearby.map(v => Number(v.like_count) || 0);
             viewsList  = nearby.map(v => Number(v.view_count) || 0);
-            timestamps = nearby.map(v => Math.round(new Date(v.created_at).getTime() / 1000));
+            timestamps = nearby.map(v => new Date(v.created_at).getTime());
             videoLats  = nearby.map(v => v.latitude);
             videoLngs  = nearby.map(v => v.longitude);
             userLat = uLat;
