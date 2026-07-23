@@ -1282,7 +1282,7 @@
             videoLngs  = nearby.map(v => v.longitude);
             userLat = uLat;
             userLng = uLng;
-            gpsMode = true;
+            gpsMode = false;
             const countEl = document.getElementById('video-count');
             if (countEl) countEl.textContent = 'Vidéo 1/' + window.videos.length;
             updateNavButtonsState();
@@ -1351,7 +1351,7 @@
           setupCompass();
           setTimeout(() => startGPSPlacement(), 600);
           toast("🗺️ Mode GPS – localisation…", 2000);
-        } else if (window.videos.length > 1) {
+        } else if (false) { // auto multi-placement desactive (instable mobile)
           setTimeout(() => startAutoPlacement(), 500);
           toast("📺 " + window.videos.length + " vidéos – placement en cours…", 1800);
         } else {
