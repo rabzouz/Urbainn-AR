@@ -1702,17 +1702,36 @@
       // In GPS mode: tap unmutes the closest visible GPS video instead of placing
       if (gpsMode && boardGroups.length > 0) {
         if (videoEls.length === 0) return;
-        let closestIdx = 0;
-        let closestDist = Infinity;
+        // Raycast depuis le centre de la vue : on active le panneau VISÉ.
         const camPos = new THREE.Vector3();
+        const camDir = new THREE.Vector3();
         camera.getWorldPosition(camPos);
+        camera.getWorldDirection(camDir);
+        const ray = new THREE.Raycaster();
+        ray.set(camPos, camDir);
+        const meshes = [];
         boardGroups.forEach((bg, i) => {
           if (!bg) return;
-          const d = bg.position.distanceTo(camPos);
-          if (d < closestDist) { closestDist = d; closestIdx = i; }
+          bg.traverse((o) => { if (o.isMesh) { o.userData.bIdx = i; meshes.push(o); } });
         });
-        videoEls.forEach((v, i) => { v.muted = (i !== closestIdx); });
-        toast("🔊 " + (usernames[closestIdx] || 'UrbainAR'));
+        let pick = -1;
+        const hits = ray.intersectObjects(meshes, false);
+        if (hits.length > 0) {
+          pick = hits[0].object.userData.bIdx;
+        } else {
+          let cd = Infinity;
+          boardGroups.forEach((bg, i) => {
+            if (!bg) return;
+            const d = bg.position.distanceTo(camPos);
+            if (d < cd) { cd = d; pick = i; }
+          });
+        }
+        if (pick < 0) return;
+        videoEls.forEach((v, i) => {
+          v.muted = (i !== pick);
+          if (i === pick) { v.play().catch(() => {}); }
+        });
+        toast("🔊 " + (usernames[pick] || 'UrbainAR'));
         return;
       }
 
