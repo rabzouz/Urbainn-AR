@@ -1348,10 +1348,13 @@
         session.addEventListener('end', () => {
           hitTestSourceRequested = false;
           hitTestSource = null;
+          clearTimeout(_chromeTimer);
+          document.getElementById('xr-overlay').classList.remove('immersive');
           toast("Session AR terminée.");
         });
 
         session.addEventListener('select', onSelect);
+        revealChrome();
 
         if (gpsMode) {
           setupCompass();
@@ -1698,7 +1701,27 @@
       scene.add(boardGroup);
     }
 
+    // Mode immersif : masque l'UI apres ~4,5s, un tap la reaffiche
+    let _chromeTimer = null;
+    let _chromeStyled = false;
+    function revealChrome(){
+      const ov = document.getElementById('xr-overlay');
+      if (!ov) return;
+      if (!_chromeStyled) {
+        const st = document.createElement('style');
+        st.textContent = '#xr-overlay .ui{transition:opacity .35s ease} #xr-overlay.immersive .ui{opacity:0;pointer-events:none}';
+        document.head.appendChild(st);
+        _chromeStyled = true;
+      }
+      ov.classList.remove('immersive');
+      clearTimeout(_chromeTimer);
+      _chromeTimer = setTimeout(() => {
+        if (renderer && renderer.xr && renderer.xr.isPresenting) ov.classList.add('immersive');
+      }, 4500);
+    }
+
     function onSelect(){
+      revealChrome();
       // In GPS mode: tap unmutes the closest visible GPS video instead of placing
       if (gpsMode && boardGroups.length > 0) {
         if (videoEls.length === 0) return;
