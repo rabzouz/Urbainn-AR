@@ -916,7 +916,7 @@
           '</div>' +
           '<div class="card-info">' +
             '<span class="card-username">@' + escapeHtml(uname) + '</span>' +
-            '${dist ? `<div class="card-dist">📍 ' + getDistLabel(idx) + '</div>` : ''}' +
+            (getDistLabel(idx) ? '<div class="card-dist">📍 ' + getDistLabel(idx) + '</div>' : '') +
             '<div class="card-stats-mini">❤️ ' + likes + ' · 👁 ' + views + '</div>' +
           '</div>';
 
@@ -992,7 +992,6 @@
         const dt    = formatPublishedAt(idx);
         const likes = formatCount(likesList[idx] ?? 0);
         const views = formatCount(viewsList[idx] ?? 0);
-        const dist  = getDistLabel(idx);
         const dist  = getDistLabel(idx);
 
         const item = document.createElement('div');
